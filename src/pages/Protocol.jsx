@@ -32,7 +32,7 @@ export default function Protocol({ protocol, toggleProtocol, supplements, toggle
               <div style={s.ricon}>{p.icon}</div>
               <div>
                 <div style={s.rtitle}>{p.name}</div>
-                <div style={s.rsub}>{p.dose} · {p.timing}</div>
+                <div style={s.rsub}>{p.sub}</div>
               </div>
             </div>
             <div style={s.rowR}>
@@ -60,7 +60,7 @@ export default function Protocol({ protocol, toggleProtocol, supplements, toggle
               <div style={s.ricon}>{p.icon}</div>
               <div>
                 <div style={s.rtitle}>{p.name}</div>
-                <div style={s.rsub}>{p.dose} · {p.timing}</div>
+                <div style={s.rsub}>{p.sub}</div>
               </div>
             </div>
             <div style={s.rowR}>
@@ -84,7 +84,7 @@ export default function Protocol({ protocol, toggleProtocol, supplements, toggle
               <div style={s.ricon}>{s2.icon}</div>
               <div>
                 <div style={s.rtitle}>{s2.name}</div>
-                <div style={s.rsub}>{s2.dose} · {s2.timing}</div>
+                <div style={s.rsub}>{s2.sub}</div>
               </div>
             </div>
             <div style={s.rowR}>
