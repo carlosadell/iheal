@@ -3,7 +3,7 @@ import Home from './pages/Home'
 import Protocol from './pages/Protocol'
 import Coach from './pages/Coach'
 import Profile from './pages/Profile'
-import Reports from './pages/Reports'
+import Reports from './pages/Reports.jsx'
 import { seedProfile, seedSleepLogs, seedBodyComposition, seedLabResults, seedMacroLogs, recommendedNextLabs } from './data/seed'
 
 const NAV = [
