@@ -64,3 +64,25 @@ export const recommendedNextLabs = [
   'Fasting glucose — metabolic baseline',
   'Testosterone total + free — DHEA metabolite check',
 ]
+
+export const seedNextLabs = recommendedNextLabs
+export const seedMacroLog = seedMacroLogs
+export const seedSleepLog = seedSleepLogs
+export const seedGoals = {
+  calories: seedProfile.calorie_target,
+  protein_g: seedProfile.protein_target_g,
+  fat_g: seedProfile.fat_target_g,
+  carbs_g: seedProfile.carb_target_g,
+  target_weight_kg: seedProfile.target_weight_kg,
+  target_body_fat_pct: seedProfile.target_body_fat_pct,
+  deep_sleep_target_pct: seedProfile.target_deep_sleep_pct,
+}
+export const seedDoctor = {
+  name: 'Dr. Anton',
+  specialty: 'Psychiatrist',
+  clinic: 'Домой Линник',
+  city: 'Saint Petersburg',
+  contact: 'Telegram',
+  next_appointment: '~5 April 2026',
+  diagnosis: 'F40.2',
+}
