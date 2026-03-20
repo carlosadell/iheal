@@ -1,95 +1,124 @@
 import { useState } from 'react'
 
-const s = {
-  page: { maxWidth:1020, margin:'0 auto', padding:'22px 24px 40px', width:'100%' },
-  tc: { display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 },
-  sl: { fontSize:10, fontWeight:500, letterSpacing:'0.9px', textTransform:'uppercase', color:'#3d5068', margin:'20px 0 8px' },
-  card: { background:'#1a2438', borderRadius:13, border:'1px solid rgba(255,255,255,0.07)', padding:'15px 17px' },
-  fg: { marginBottom:11 },
-  fl: { fontSize:11, color:'#6b7f96', marginBottom:4, display:'block' },
-  fi: { width:'100%', padding:'9px 11px', borderRadius:8, border:'1px solid rgba(255,255,255,0.07)', background:'#161f30', color:'#d8e8f5', fontSize:13, fontFamily:'inherit', outline:'none' },
-  fr2: { display:'grid', gridTemplateColumns:'1fr 1fr', gap:9 },
-  btnP: { width:'100%', padding:11, background:'#00d4b8', color:'#080d16', border:'none', borderRadius:9, fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'inherit' },
-  ro: { padding:'11px 13px', background:'#161f30', borderRadius:9, border:'1px solid rgba(255,255,255,0.07)', marginBottom:6, cursor:'pointer' },
-}
+const GREEN  = '#c5f135'
+const CARD   = '#1e2128'
+const BORDER = '#2a2e38'
+const TEXT2  = '#b0b4c0'
+const TEXT3  = '#6a6e7a'
 
-const prev = [
-  { name:'Dr. Anton Petrov — Psychiatrist', desc:'Russian · 15 Mar 2026 · Sleep + HRV + medications' },
-  { name:'Clinical Report', desc:'English · 15 Mar 2026 · Full clinical summary' },
-  { name:'Sister — Psychologist', desc:'Spanish · 15 Mar 2026 · Full clinical summary' },
-]
-
-export default function Reports() {
+export default function Reports({ setPage }) {
   const [recipient, setRecipient] = useState('')
-  const [lang, setLang] = useState('Russian')
-  const [from, setFrom] = useState('2026-03-07')
-  const [to, setTo] = useState('2026-03-19')
-  const [focus, setFocus] = useState('')
+  const [language,  setLanguage]  = useState('English')
+  const [dates,     setDates]     = useState('')
+  const [notes,     setNotes]     = useState('')
 
   const generate = () => {
-    const prompt = `Generate a medical report. Recipient: ${recipient||'Doctor'}. Language: ${lang}. Date range: ${from} to ${to}. Focus: ${focus||'sleep data, HRV, medications, body composition, peptide protocol'}.`
-    window.sendPrompt?.(prompt)
+    const prompt = `Generate a clinical health report for ${recipient || 'my doctor'} in ${language}. Date range: ${dates || 'March 2026'}. ${notes ? 'Focus on: ' + notes : 'Include sleep architecture, HRV trends, body composition, medications and supplements, and lab results.'}`
+    // Store prompt in sessionStorage to pass to Coach
+    sessionStorage.setItem('iheal_report_prompt', prompt)
+    setPage('coach')
   }
 
   return (
-    <div style={s.page}>
-      <div style={s.tc}>
-        <div>
-          <div style={{...s.sl, marginTop:0}}>Generate report</div>
-          <div style={s.card}>
-            <div style={s.fg}>
-              <label style={s.fl}>Recipient name</label>
-              <input style={s.fi} value={recipient} onChange={e=>setRecipient(e.target.value)} placeholder="e.g. Dr. Anton Petrov" />
-            </div>
-            <div style={s.fg}>
-              <label style={s.fl}>Language</label>
-              <select style={s.fi} value={lang} onChange={e=>setLang(e.target.value)}>
-                <option>Russian</option>
-                <option>English</option>
-                <option>Spanish</option>
-              </select>
-            </div>
-            <div style={{...s.fr2, marginBottom:11}}>
-              <div>
-                <label style={s.fl}>From</label>
-                <input style={s.fi} type="date" value={from} onChange={e=>setFrom(e.target.value)} />
-              </div>
-              <div>
-                <label style={s.fl}>To</label>
-                <input style={s.fi} type="date" value={to} onChange={e=>setTo(e.target.value)} />
-              </div>
-            </div>
-            <div style={s.fg}>
-              <label style={s.fl}>What to focus on in this report</label>
-              <textarea style={{...s.fi, resize:'none', lineHeight:1.5}} rows={3}
-                value={focus} onChange={e=>setFocus(e.target.value)}
-                placeholder="e.g. Focus on sleep and HRV. Include medications. Mention anxiety improvement since starting Etifoxine." />
-            </div>
-            <button style={s.btnP} onClick={generate}>Generate PDF ↗</button>
-          </div>
-        </div>
-
-        <div>
-          <div style={{...s.sl, marginTop:0}}>Previous reports</div>
-          {prev.map(r => (
-            <div key={r.name} style={s.ro}>
-              <div style={{fontSize:12,fontWeight:500,marginBottom:2}}>{r.name}</div>
-              <div style={{fontSize:11,color:'#6b7f96'}}>{r.desc}</div>
-            </div>
-          ))}
-
-          <div style={s.sl}>Doctor</div>
-          <div style={{...s.card, padding:'11px 13px'}}>
-            <div style={{display:'flex',alignItems:'center',gap:9,padding:'7px 0'}}>
-              <div style={{width:32,height:32,borderRadius:7,background:'linear-gradient(135deg,#4d9fff,#00d4b8)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:700,color:'#080d16',flexShrink:0}}>DR</div>
-              <div>
-                <div style={{fontSize:13,fontWeight:500}}>Dr. Anton</div>
-                <div style={{fontSize:10,color:'#6b7f96'}}>Psychiatrist · Telegram · SPb · Next: ~5 Apr 2026</div>
-              </div>
-            </div>
-          </div>
+    <div>
+      {/* HERO */}
+      <div style={s.hero}>
+        <div style={s.heroOverlay} /><div style={s.heroGlow} />
+        <div style={s.heroContent}>
+          <div style={s.eyebrow}>Generate</div>
+          <div style={s.heroTitle}>REPORTS</div>
         </div>
       </div>
+
+      {/* NEW REPORT FORM */}
+      <div style={s.sec}>New Report</div>
+      <div style={{ padding: '0 16px' }}>
+        <label style={s.flbl}>Recipient Name</label>
+        <input
+          style={s.finput}
+          value={recipient}
+          onChange={e => setRecipient(e.target.value)}
+          placeholder="e.g. Dr. Anton"
+        />
+        <label style={s.flbl}>Language</label>
+        <select style={s.finput} value={language} onChange={e => setLanguage(e.target.value)}>
+          <option>English</option>
+          <option>Russian</option>
+          <option>Spanish</option>
+        </select>
+        <label style={s.flbl}>Date Range</label>
+        <input
+          style={s.finput}
+          value={dates}
+          onChange={e => setDates(e.target.value)}
+          placeholder="e.g. March 1–20, 2026"
+        />
+        <label style={s.flbl}>What to include</label>
+        <textarea
+          style={s.ftextarea}
+          value={notes}
+          onChange={e => setNotes(e.target.value)}
+          placeholder="e.g. Focus on sleep and Trazodone response. Skip nutrition details."
+        />
+      </div>
+      <button onClick={generate} style={s.btnMain}>GENERATE REPORT</button>
+
+      {/* PREVIOUS REPORTS */}
+      <div style={s.sec}>Previous Reports</div>
+      <div style={s.card}>
+        {[
+          { name: 'Dr. Anton — Psychiatrist', lang: 'Russian', date: '15 Mar 2026', desc: 'Sleep + HRV + medications' },
+          { name: 'Clinical Summary',         lang: 'English', date: '15 Mar 2026', desc: 'Full clinical summary' },
+          { name: 'Resumen Clínico',          lang: 'Spanish', date: '15 Mar 2026', desc: 'Full clinical summary' },
+        ].map(r => (
+          <div key={r.name} style={s.row}>
+            <div style={s.rowL}>
+              <div style={s.ricon}>📋</div>
+              <div>
+                <div style={s.rtitle}>{r.name}</div>
+                <div style={s.rsub}>{r.date} · {r.lang} · {r.desc}</div>
+              </div>
+            </div>
+            <div style={{ fontSize: 16, color: TEXT3 }}>›</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ height: 24 }} />
     </div>
   )
+}
+
+const s = {
+  hero: { position: 'relative', overflow: 'hidden', background: 'linear-gradient(160deg,#0d1200 0%,#000 55%)' },
+  heroOverlay: { position: 'absolute', inset: 0, background: 'linear-gradient(to bottom,transparent 10%,#000 100%)' },
+  heroGlow:    { position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at 70% 30%,rgba(197,241,53,.08) 0%,transparent 65%)' },
+  heroContent: { position: 'relative', padding: '14px 18px 12px' },
+  eyebrow:     { fontSize: 11, fontWeight: 600, color: GREEN, letterSpacing: '2.5px', textTransform: 'uppercase', marginBottom: 3 },
+  heroTitle:   { fontFamily: "'Bebas Neue', sans-serif", fontSize: 38, letterSpacing: 1, lineHeight: 1, color: '#fff' },
+  sec:         { fontFamily: "'Bebas Neue', sans-serif", fontSize: 14, letterSpacing: '2px', color: '#fff', padding: '13px 16px 8px', textTransform: 'uppercase' },
+  flbl:        { display: 'block', fontSize: 10, fontWeight: 600, color: TEXT2, textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: 7, marginTop: 14 },
+  finput:      {
+    width: '100%', background: CARD, border: `1px solid ${BORDER}`, borderRadius: 10,
+    padding: '11px 14px', fontSize: 16, color: '#fff',
+    fontFamily: "'DM Sans', sans-serif", outline: 'none',
+  },
+  ftextarea:   {
+    width: '100%', background: CARD, border: `1px solid ${BORDER}`, borderRadius: 10,
+    padding: '11px 14px', fontSize: 16, color: '#fff',
+    fontFamily: "'DM Sans', sans-serif", outline: 'none',
+    resize: 'none', height: 80, lineHeight: 1.5,
+  },
+  btnMain: {
+    display: 'block', width: 'calc(100% - 32px)', margin: '14px 16px 0',
+    padding: 14, borderRadius: 12, background: GREEN, border: 'none',
+    fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1,
+    color: '#000', cursor: 'pointer',
+  },
+  card:   { background: CARD, borderRadius: 14, border: `1px solid ${BORDER}`, overflow: 'hidden', margin: '0 16px' },
+  row:    { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: `1px solid ${BORDER}`, cursor: 'pointer' },
+  rowL:   { display: 'flex', alignItems: 'center', gap: 11 },
+  ricon:  { width: 36, height: 36, borderRadius: 10, background: '#2e3240', border: `1px solid ${BORDER}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 },
+  rtitle: { fontSize: 14, fontWeight: 500, color: '#fff', lineHeight: 1.2 },
+  rsub:   { fontSize: 11, color: TEXT2, marginTop: 2 },
 }

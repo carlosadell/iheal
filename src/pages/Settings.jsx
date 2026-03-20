@@ -1,112 +1,133 @@
-const s = {
-  page: { maxWidth:1020, margin:'0 auto', padding:'22px 24px 40px', width:'100%' },
-  tc: { display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 },
-  sl: { fontSize:10, fontWeight:500, letterSpacing:'0.9px', textTransform:'uppercase', color:'#3d5068', margin:'20px 0 8px' },
-  card: { background:'#1a2438', borderRadius:13, border:'1px solid rgba(255,255,255,0.07)', padding:'11px 14px' },
-  sr: { display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 0', borderBottom:'1px solid rgba(255,255,255,0.07)' },
-}
+import { useState } from 'react'
+import { seedProfile, seedGoals, seedDoctor } from '../data/seed.js'
 
-export default function Settings({ goals, setGoals, goCoach, profileData }) {
-  const personal = [
-    ['Full name', profileData?.full_name || 'Carlos Adell Carceller'],
-    ['Date of birth', '22 August 1980'],
-    ['Age', '45'],
-    ['Sex', 'Male'],
-    ['Location', 'Saint Petersburg, Russia'],
-    ['Dietary approach', 'Animal-based + evening carbs'],
-  ]
+const GREEN  = '#c5f135'
+const CARD   = '#1e2128'
+const BORDER = '#2a2e38'
+const TEXT2  = '#b0b4c0'
+const TEXT3  = '#6a6e7a'
 
-  const goalItems = [
-    ['Target weight', '75 kg'],
-    ['Target body fat', '<20%'],
-    ['Daily calories', `${goals.calories} kcal`],
-    ['Daily protein', `${goals.protein_g}g`],
-    ['Daily carbs', `${goals.carbs_g}g`],
-    ['Daily fat', `${goals.fat_g}g`],
-  ]
+export default function Settings({ goals, setGoals }) {
+  const [editing, setEditing] = useState(null)
+  const [tempVal, setTempVal] = useState('')
 
-  const prefs = [
-    ['Scale mode', 'Standard (not athlete)'],
-    ['Weight unit', 'kg'],
-    ['Oura sync', 'Manual (auto later)'],
-    ['Language', 'English'],
-  ]
-
-  const doctor = [
-    ['Name', 'Dr. Anton'],
-    ['Diagnosis', 'F40.2'],
-    ['Next appointment', '~5 Apr 2026'],
-    ['Contact', 'Telegram'],
-  ]
+  const startEdit = (key, current) => {
+    setEditing(key)
+    setTempVal(String(current))
+  }
+  const saveEdit = (key) => {
+    const num = parseFloat(tempVal)
+    if (!isNaN(num)) setGoals(prev => ({ ...prev, [key]: num }))
+    setEditing(null)
+  }
 
   return (
-    <div style={s.page}>
-      <div style={s.tc}>
-        <div>
-          <div style={{...s.sl, marginTop:0}}>Personal data</div>
-          <div style={s.card}>
-            {personal.map(([l,v],i) => (
-              <div key={l} style={{...s.sr, borderBottom: i===personal.length-1?'none':undefined}}>
-                <span style={{fontSize:13}}>{l}</span>
-                <div style={{display:'flex',alignItems:'center',gap:9}}>
-                  <span style={{fontSize:12,color:'#6b7f96'}}>{v}</span>
-                  <span style={{fontSize:11,color:'#00d4b8',cursor:'pointer'}} onClick={() => goCoach(`Update my ${l.toLowerCase()} in iHeal`)}>Edit</span>
-                </div>
-              </div>
-            ))}
-          </div>
+    <div>
+      <div style={{ height: 14 }} />
 
-          <div style={s.sl}>Health goals</div>
-          <div style={s.card}>
-            {goalItems.map(([l,v],i) => (
-              <div key={l} style={{...s.sr, borderBottom: i===goalItems.length-1?'none':undefined}}>
-                <span style={{fontSize:13}}>{l}</span>
-                <div style={{display:'flex',alignItems:'center',gap:9}}>
-                  <span style={{fontSize:12,color:'#6b7f96'}}>{v}</span>
-                  <span style={{fontSize:11,color:'#00d4b8',cursor:'pointer'}} onClick={() => goCoach(`Update my ${l.toLowerCase()} goal in iHeal`)}>Edit</span>
-                </div>
-              </div>
-            ))}
+      {/* PERSONAL */}
+      <div style={s.sec}>Personal</div>
+      <div style={s.card}>
+        {[
+          ['Full Name',  seedProfile.full_name],
+          ['Age',        seedProfile.age + 'y'],
+          ['DOB',        seedProfile.date_of_birth],
+          ['Sex',        seedProfile.sex],
+          ['Location',   seedProfile.location],
+          ['Timezone',   seedProfile.timezone],
+          ['Nationality',seedProfile.nationality],
+        ].map(([l, v]) => (
+          <div key={l} style={s.row}>
+            <div style={s.slbl}>{l}</div>
+            <div style={s.sval}>{v}</div>
           </div>
+        ))}
+      </div>
+
+      {/* HEALTH GOALS */}
+      <div style={s.sec}>Health Goals</div>
+      <div style={s.card}>
+        {[
+          { key: 'target_weight_kg',    label: 'Target Weight',    suffix: 'kg' },
+          { key: 'target_body_fat_pct', label: 'Target Body Fat',  suffix: '%' },
+          { key: 'deep_sleep_target_pct',label: 'Deep Sleep Target',suffix: '%' },
+          { key: 'calories',            label: 'Calorie Target',   suffix: 'kcal' },
+          { key: 'protein_g',           label: 'Protein Target',   suffix: 'g' },
+          { key: 'fat_g',               label: 'Fat Target',       suffix: 'g' },
+          { key: 'carbs_g',             label: 'Carbs Target',     suffix: 'g' },
+        ].map(({ key, label, suffix }) => (
+          <div key={key} style={s.row}>
+            <div style={s.slbl}>{label}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              {editing === key ? (
+                <>
+                  <input
+                    value={tempVal}
+                    onChange={e => setTempVal(e.target.value)}
+                    onBlur={() => saveEdit(key)}
+                    onKeyDown={e => e.key === 'Enter' && saveEdit(key)}
+                    autoFocus
+                    style={s.editInput}
+                  />
+                  <span style={{ fontSize: 11, color: TEXT3 }}>{suffix}</span>
+                  <span onClick={() => saveEdit(key)} style={s.sedit}>Save</span>
+                </>
+              ) : (
+                <>
+                  <div style={s.sval}>{goals[key]} {suffix}</div>
+                  <div onClick={() => startEdit(key, goals[key])} style={s.sedit}>Edit</div>
+                </>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* DOCTOR */}
+      <div style={s.sec}>Prescribing Doctor</div>
+      <div style={s.card}>
+        {[
+          ['Doctor',    seedDoctor.name],
+          ['Clinic',    seedDoctor.clinic + ', SPB'],
+          ['Diagnosis', seedDoctor.diagnosis],
+          ['Next Appt', seedDoctor.next_appointment],
+          ['Phone',     seedDoctor.contact === 'Telegram' ? 'Telegram: 8-952-244-18-27' : seedDoctor.contact],
+        ].map(([l, v]) => (
+          <div key={l} style={s.row}>
+            <div style={s.slbl}>{l}</div>
+            <div style={s.sval}>{v}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* DATA */}
+      <div style={s.sec}>Data</div>
+      <div style={s.card}>
+        <div style={s.row}>
+          <div style={s.slbl}>Export all data</div>
+          <div style={s.sedit}>Export ↗</div>
         </div>
-
-        <div>
-          <div style={{...s.sl, marginTop:0}}>App preferences</div>
-          <div style={s.card}>
-            {prefs.map(([l,v],i) => (
-              <div key={l} style={{...s.sr, borderBottom: i===prefs.length-1?'none':undefined}}>
-                <span style={{fontSize:13}}>{l}</span>
-                <div style={{display:'flex',alignItems:'center',gap:9}}>
-                  <span style={{fontSize:12,color:'#6b7f96'}}>{v}</span>
-                  <span style={{fontSize:11,color:'#00d4b8',cursor:'pointer'}}>Edit</span>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div style={s.sl}>Psychiatrist</div>
-          <div style={s.card}>
-            {doctor.map(([l,v],i) => (
-              <div key={l} style={{...s.sr, borderBottom: i===doctor.length-1?'none':undefined}}>
-                <span style={{fontSize:13}}>{l}</span>
-                <span style={{fontSize:12,color:'#6b7f96'}}>{v}</span>
-              </div>
-            ))}
-          </div>
-
-          <div style={s.sl}>Data</div>
-          <div style={s.card}>
-            <div style={{...s.sr, borderBottom:'1px solid rgba(255,255,255,0.07)'}}>
-              <span style={{fontSize:13}}>Export all data</span>
-              <span style={{fontSize:11,color:'#00d4b8',cursor:'pointer'}} onClick={() => goCoach('Export all my iHeal health data as JSON')}>Export ↗</span>
-            </div>
-            <div style={{...s.sr, borderBottom:'none'}}>
-              <span style={{fontSize:13}}>Sync profile with Coach</span>
-              <span style={{fontSize:11,color:'#00d4b8',cursor:'pointer'}} onClick={() => goCoach('Sync my iHeal profile with the AI coach')}>Sync ↗</span>
-            </div>
-          </div>
+        <div style={s.row}>
+          <div style={s.slbl}>Sync with Supabase</div>
+          <div style={s.sedit}>Sync ↗</div>
         </div>
       </div>
+
+      <div style={{ height: 24 }} />
     </div>
   )
+}
+
+const s = {
+  sec:       { fontFamily: "'Bebas Neue', sans-serif", fontSize: 14, letterSpacing: '2px', color: '#fff', padding: '13px 16px 8px', textTransform: 'uppercase' },
+  card:      { background: CARD, borderRadius: 14, border: `1px solid ${BORDER}`, overflow: 'hidden', margin: '0 16px' },
+  row:       { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: `1px solid ${BORDER}` },
+  slbl:      { fontSize: 14, color: '#fff' },
+  sval:      { fontSize: 13, color: TEXT2 },
+  sedit:     { fontSize: 12, color: GREEN, fontWeight: 600, cursor: 'pointer' },
+  editInput: {
+    background: '#2e3240', border: `1px solid ${BORDER}`, borderRadius: 6,
+    padding: '5px 9px', fontSize: 13, color: '#fff',
+    fontFamily: "'DM Sans', sans-serif", outline: 'none', width: 70, textAlign: 'right',
+  },
 }

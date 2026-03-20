@@ -1,3 +1,28 @@
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body, #root {
+  height: 100%;
+  background: #000;
+  overflow: hidden;
+}
+
+/* Scrollbar hidden globally */
+::-webkit-scrollbar { display: none; }
+* { scrollbar-width: none; }
+
+/* Pulse animation for AI thinking dots */
+@keyframes pulse {
+  0%, 100% { opacity: 0.3; }
+  50%       { opacity: 1; }
+}

@@ -1,92 +1,113 @@
-const s = {
-  page: { maxWidth:1020, margin:'0 auto', padding:'22px 24px 40px', width:'100%' },
-  tc: { display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 },
-  sl: { fontSize:10, fontWeight:500, letterSpacing:'0.9px', textTransform:'uppercase', color:'#3d5068', margin:'20px 0 8px' },
-  card: { background:'#1a2438', borderRadius:13, border:'1px solid rgba(255,255,255,0.07)', padding:'15px 17px' },
-  mc: { background:'#161f30', borderRadius:11, border:'1px solid rgba(255,255,255,0.07)', padding:'12px 14px' },
-  lr: { display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 0', borderBottom:'1px solid rgba(255,255,255,0.07)' },
-  btnP: { width:'100%', padding:11, background:'#00d4b8', color:'#080d16', border:'none', borderRadius:9, fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'inherit', marginTop:8 },
-}
+import { seedBodyComposition, seedLabResults, seedNextLabs } from '../data/seed.js'
 
-const statusStyle = (st) => {
-  if (st==='high') return { background:'rgba(255,92,106,0.09)', color:'#ff5c6a' }
-  if (st==='normal') return { background:'rgba(0,212,184,0.09)', color:'#00d4b8' }
-  if (st==='elevated') return { background:'rgba(255,179,71,0.09)', color:'#ffb347' }
-  return { background:'rgba(255,255,255,0.04)', color:'#6b7f96' }
-}
+const GREEN  = '#c5f135'
+const CARD   = '#1e2128'
+const BORDER = '#2a2e38'
+const TEXT2  = '#b0b4c0'
+const TEXT3  = '#6a6e7a'
+const CARD3  = '#2e3240'
 
-export default function Profile({ bodyComp, labResults, pendingTests, sleepLog, goCoach }) {
-  const latest = bodyComp[bodyComp.length-1]
-  const hrv = sleepLog.map(s => ({ d: s.date.slice(5), v: s.hrv_ms }))
+export default function Profile() {
+  const latest = seedBodyComposition[seedBodyComposition.length - 1]
 
   return (
-    <div style={s.page}>
-      <div style={s.tc}>
-        <div>
-          <div style={{...s.sl, marginTop:0}}>Body composition — {latest?.date}</div>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:9,marginBottom:9}}>
-            {[
-              {l:'Weight',v:latest?.weight_kg,u:' kg',c:'#00d4b8'},
-              {l:'Body Fat',v:latest?.body_fat_pct,u:' %',c:'#4d9fff'},
-              {l:'Muscle',v:latest?.muscle_mass_kg,u:' kg',c:'#00d4b8'},
-              {l:'Visceral Fat',v:latest?.visceral_fat,u:' /12',c:'#ffb347'},
-            ].map(m => (
-              <div key={m.l} style={s.mc}>
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
-                  <span style={{fontSize:10,color:'#6b7f96'}}>{m.l}</span>
-                  <span style={{width:5,height:5,borderRadius:'50%',background:m.c}}></span>
-                </div>
-                <div style={{fontFamily:"'Space Grotesk',sans-serif",fontSize:22,fontWeight:600,letterSpacing:'-0.7px',lineHeight:1}}>
-                  {m.v}<span style={{fontSize:11,color:'#6b7f96',fontWeight:400}}>{m.u}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div style={s.sl}>HRV trend (nightly ms)</div>
-          <div style={{...s.card, padding:'12px 14px'}}>
-            {hrv.map((r,i) => (
-              <div key={r.d} style={{display:'flex',alignItems:'center',gap:7,marginBottom:i===hrv.length-1?0:4}}>
-                <span style={{fontSize:10,color:'#3d5068',width:42,flexShrink:0}}>{r.d}</span>
-                <div style={{flex:1,height:4,background:'#161f30',borderRadius:2,overflow:'hidden'}}>
-                  <div style={{height:'100%',width:`${Math.round((r.v/50)*100)}%`,background:'#4d9fff',borderRadius:2}}></div>
-                </div>
-                <span style={{fontSize:10,fontWeight:500,width:22,textAlign:'right',color:'#4d9fff'}}>{r.v}</span>
-              </div>
-            ))}
-            <div style={{fontSize:9,color:'#3d5068',marginTop:7}}>Healthy 40-80 ms · current avg 24 ms</div>
-          </div>
-        </div>
-
-        <div>
-          <div style={{...s.sl, marginTop:0}}>Lab results — Jul 2025</div>
-          <div style={{...s.card, padding:'10px 13px'}}>
-            {labResults.map((l,i) => (
-              <div key={l.name} style={{...s.lr, borderBottom: i===labResults.length-1?'none':undefined}}>
-                <span style={{fontSize:12}}>{l.name}</span>
-                <div style={{display:'flex',alignItems:'center',gap:6}}>
-                  <span style={{fontSize:12,fontWeight:500}}>{l.value}</span>
-                  <span style={{fontSize:9,padding:'2px 6px',borderRadius:6,fontWeight:500,...statusStyle(l.status)}}>{l.status}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div style={s.sl}>Pending tests</div>
-          <div style={{...s.card, padding:'10px 13px'}}>
-            {pendingTests.map((t,i) => (
-              <div key={t} style={{...s.lr, borderBottom: i===pendingTests.length-1?'none':undefined}}>
-                <span style={{fontSize:12}}>{t}</span>
-                <span style={{fontSize:9,padding:'2px 6px',borderRadius:6,fontWeight:500,background:'rgba(255,255,255,0.04)',color:'#6b7f96'}}>pending</span>
-              </div>
-            ))}
-          </div>
-
-          <button style={s.btnP} onClick={() => goCoach('I want to upload new lab results and add them to my health profile')}>
-            Upload lab results ↗
-          </button>
+    <div>
+      {/* PROFILE HEADER */}
+      <div style={s.hdr}>
+        <div style={s.avatar}>CA</div>
+        <div style={{ position: 'relative' }}>
+          <div style={s.pname}>CARLOS A.</div>
+          <div style={s.psub}>Saint Petersburg, Russia · 45y</div>
+          <div style={s.ppro}>PRO</div>
         </div>
       </div>
+
+      {/* BODY COMPOSITION */}
+      <div style={s.sec}>Body Composition <span style={s.secSub}>{latest.date}</span></div>
+      <div style={s.grid}>
+        {[
+          { lbl: 'Weight',      val: latest.weight_kg,     unit: 'kg',  delta: '↓ 0.4 kg — good', dc: 'pos' },
+          { lbl: 'Body Fat',    val: latest.body_fat_pct,  unit: '%',   delta: '↓ trending down', dc: 'pos', sub: 'Goal: sub-20%' },
+          { lbl: 'Muscle Mass', val: latest.muscle_kg,     unit: 'kg',  delta: 'stable',           dc: 'ok' },
+          { lbl: 'Visceral Fat',val: latest.visceral_fat,  unit: '',    delta: '↓ improving',       dc: 'warn', sub: 'Target: <5' },
+        ].map(m => (
+          <div key={m.lbl} style={s.metric}>
+            <div style={s.mlbl}>{m.lbl}</div>
+            <div style={s.mval}>
+              {m.val}
+              {m.unit && <span style={{ fontSize: 14, color: TEXT2 }}> {m.unit}</span>}
+            </div>
+            {m.sub && <div style={s.munit}>{m.sub}</div>}
+            <div style={{ ...s.mdelta, ...(m.dc === 'pos' ? s.dPos : m.dc === 'warn' ? s.dWarn : s.dOk) }}>
+              {m.delta}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* LAB RESULTS */}
+      <div style={s.sec}>Lab Results</div>
+      <div style={s.card}>
+        {seedLabResults.map(l => (
+          <div key={l.name} style={s.labRow}>
+            <div style={{ fontSize: 13, color: '#fff' }}>{l.name}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ fontSize: 10, color: TEXT3 }}>{l.range}</div>
+              <div style={{
+                fontSize: 13, fontWeight: 600,
+                color: l.status === 'ok' ? GREEN : l.status === 'warn' ? '#ffb400' : TEXT3,
+                ...(l.status === 'pend' ? { fontSize: 11, fontWeight: 400 } : {}),
+              }}>
+                {l.value ?? 'Pending'}
+                {l.unit && l.value ? <span style={{ fontSize: 9, fontWeight: 400, color: TEXT3 }}> {l.unit}</span> : null}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* RECOMMENDED NEXT LABS */}
+      <div style={s.sec}>Recommended Next Labs</div>
+      <div style={s.card}>
+        {seedNextLabs.map(l => (
+          <div key={l} style={s.nextLabRow}>
+            <div style={{ width: 32, height: 32, borderRadius: 8, background: CARD3, border: `1px solid ${BORDER}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>🧪</div>
+            <div style={{ fontSize: 13, color: TEXT2, lineHeight: 1.4 }}>{l}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ height: 24 }} />
     </div>
   )
+}
+
+const s = {
+  hdr: {
+    padding: '16px', display: 'flex', alignItems: 'center', gap: 14,
+    background: 'linear-gradient(160deg,#0d1200 0%,#000 70%)',
+    borderBottom: `1px solid ${BORDER}`, position: 'relative', overflow: 'hidden',
+  },
+  avatar: {
+    width: 54, height: 54, borderRadius: 14, background: GREEN,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    fontFamily: "'Bebas Neue', sans-serif", fontSize: 25, color: '#000', flexShrink: 0,
+  },
+  pname:  { fontFamily: "'Bebas Neue', sans-serif", fontSize: 27, letterSpacing: 1, color: '#fff' },
+  psub:   { fontSize: 12, color: TEXT2, marginTop: 1 },
+  ppro:   { display: 'inline-block', background: GREEN, color: '#000', fontSize: 10, fontWeight: 700, padding: '2px 9px', borderRadius: 20, marginTop: 5 },
+  sec:    { fontFamily: "'Bebas Neue', sans-serif", fontSize: 14, letterSpacing: '2px', color: '#fff', padding: '13px 16px 8px', textTransform: 'uppercase' },
+  secSub: { fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: TEXT3, textTransform: 'none', letterSpacing: 0, fontWeight: 400, marginLeft: 8 },
+  grid:   { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, padding: '0 16px' },
+  metric: { background: CARD, border: `1px solid ${BORDER}`, borderRadius: 14, padding: '13px 12px 11px' },
+  mlbl:   { fontSize: 10, fontWeight: 600, color: TEXT2, textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: 4 },
+  mval:   { fontFamily: "'Bebas Neue', sans-serif", fontSize: 30, letterSpacing: '.5px', color: GREEN, lineHeight: 1 },
+  munit:  { fontSize: 11, color: TEXT2, marginTop: 2 },
+  mdelta: { display: 'inline-flex', alignItems: 'center', fontSize: 10, fontWeight: 600, marginTop: 5, padding: '2px 8px', borderRadius: 20 },
+  dPos:   { background: 'rgba(76,175,80,.12)', color: '#66bb6a' },
+  dOk:    { background: 'rgba(255,255,255,.07)', color: TEXT2 },
+  dWarn:  { background: 'rgba(255,180,0,.1)', color: '#ffb400' },
+  card:   { background: CARD, borderRadius: 14, border: `1px solid ${BORDER}`, overflow: 'hidden', margin: '0 16px' },
+  labRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '11px 16px', borderBottom: `1px solid ${BORDER}` },
+  nextLabRow: { display: 'flex', alignItems: 'center', gap: 12, padding: '11px 16px', borderBottom: `1px solid ${BORDER}` },
 }
