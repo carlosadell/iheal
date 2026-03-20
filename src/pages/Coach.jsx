@@ -3,7 +3,6 @@ import { useState, useRef, useEffect } from 'react'
 const GREEN  = '#c5f135'
 const CARD   = '#1e2128'
 const BORDER = '#2a2e38'
-const TEXT2  = '#b0b4c0'
 
 const INITIAL_MSG = { role: 'ai', text: "I'm your iHeal AI Coach. Share anything — Oura data, RENPHO scans, lab results, food photos, or questions. I have your full health context." }
 
@@ -30,16 +29,13 @@ INTELLECTUAL FRAMEWORK: Mechanism-first. LDL alone ≠ CVD. Inflammation + insul
 Be precise, mechanistic, and concise. No generic health advice. Max 150 words per response unless a detailed analysis is specifically requested.`
 
 function renderText(text) {
-  const lines = text.split('\n')
-  return lines.map((line, i) => {
-    if (line.match(/^[-•*]\s/)) {
-      return (
-        <div key={i} style={{ display: 'flex', gap: 8, marginTop: 5 }}>
-          <span style={{ color: GREEN, flexShrink: 0 }}>•</span>
-          <span>{renderInline(line.replace(/^[-•*]\s/, ''))}</span>
-        </div>
-      )
-    }
+  return text.split('\n').map((line, i) => {
+    if (line.match(/^[-•*]\s/)) return (
+      <div key={i} style={{ display: 'flex', gap: 8, marginTop: 5 }}>
+        <span style={{ color: GREEN, flexShrink: 0 }}>•</span>
+        <span>{renderInline(line.replace(/^[-•*]\s/, ''))}</span>
+      </div>
+    )
     if (line.match(/^\d+\.\s/)) {
       const num = line.match(/^(\d+)\./)[1]
       return (
@@ -55,11 +51,9 @@ function renderText(text) {
 }
 
 function renderInline(text) {
-  const parts = text.split(/(\*\*[^*]+\*\*)/)
-  return parts.map((part, i) => {
-    if (part.startsWith('**') && part.endsWith('**')) {
+  return text.split(/(\*\*[^*]+\*\*)/).map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**'))
       return <strong key={i} style={{ color: '#fff', fontWeight: 600 }}>{part.slice(2, -2)}</strong>
-    }
     return <span key={i}>{part}</span>
   })
 }
@@ -69,20 +63,15 @@ export default function Coach() {
     try {
       const saved = localStorage.getItem('iheal_chat')
       return saved ? JSON.parse(saved) : [INITIAL_MSG]
-    } catch {
-      return [INITIAL_MSG]
-    }
+    } catch { return [INITIAL_MSG] }
   })
   const [input, setInput]       = useState('')
   const [thinking, setThinking] = useState(false)
   const bottomRef               = useRef(null)
   const inputRef                = useRef(null)
 
-  // Save messages to localStorage whenever they change
   useEffect(() => {
-    try {
-      localStorage.setItem('iheal_chat', JSON.stringify(msgs))
-    } catch {}
+    try { localStorage.setItem('iheal_chat', JSON.stringify(msgs)) } catch {}
   }, [msgs])
 
   useEffect(() => {
@@ -105,10 +94,7 @@ export default function Coach() {
           model: 'claude-sonnet-4-20250514',
           max_tokens: 1000,
           system: SYSTEM,
-          messages: newMsgs.map(m => ({
-            role: m.role === 'ai' ? 'assistant' : 'user',
-            content: m.text,
-          })),
+          messages: newMsgs.map(m => ({ role: m.role === 'ai' ? 'assistant' : 'user', content: m.text })),
         }),
       })
       const data = await res.json()
@@ -119,20 +105,12 @@ export default function Coach() {
     setThinking(false)
   }
 
-  const clearHistory = () => {
-    const fresh = [INITIAL_MSG]
-    setMsgs(fresh)
-    localStorage.setItem('iheal_chat', JSON.stringify(fresh))
-  }
-
   return (
     <div style={s.wrap}>
-      {/* Clear history button */}
       <div style={s.header}>
-        <span style={s.headerTitle}>AI Coach</span>
-        <button onClick={clearHistory} style={s.clearBtn}>Clear history</button>
+        <span style={s.headerTitle}>AI COACH</span>
+        <button onClick={() => { const f=[INITIAL_MSG]; setMsgs(f); localStorage.setItem('iheal_chat',JSON.stringify(f)) }} style={s.clearBtn}>Clear history</button>
       </div>
-
       <div style={s.msgs}>
         {msgs.map((m, i) => (
           <div key={i} style={{ ...s.msg, ...(m.role === 'ai' ? s.msgAi : s.msgUser) }}>
@@ -141,30 +119,16 @@ export default function Coach() {
         ))}
         {thinking && (
           <div style={{ ...s.msg, ...s.msgAi }}>
-            <span style={s.dot} />
-            <span style={{ ...s.dot, animationDelay: '.2s' }} />
-            <span style={{ ...s.dot, animationDelay: '.4s' }} />
+            <span style={s.dot} /><span style={{ ...s.dot, animationDelay: '.2s' }} /><span style={{ ...s.dot, animationDelay: '.4s' }} />
           </div>
         )}
         <div ref={bottomRef} />
       </div>
-
       <div style={s.bar}>
-        <textarea
-          ref={inputRef}
-          value={input}
-          onChange={e => {
-            setInput(e.target.value)
-            e.target.style.height = 'auto'
-            e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px'
-          }}
-          onKeyDown={e => {
-            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }
-          }}
-          placeholder="Ask anything or log data..."
-          rows={1}
-          style={s.input}
-        />
+        <textarea ref={inputRef} value={input}
+          onChange={e => { setInput(e.target.value); e.target.style.height='auto'; e.target.style.height=Math.min(e.target.scrollHeight,120)+'px' }}
+          onKeyDown={e => { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send()} }}
+          placeholder="Ask anything or log data..." rows={1} style={s.input} />
         <button onClick={send} style={s.sendBtn}>↑</button>
       </div>
     </div>
@@ -173,21 +137,17 @@ export default function Coach() {
 
 const s = {
   wrap:        { display: 'flex', flexDirection: 'column', height: '100%', background: '#000' },
-  header:      { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px 8px', borderBottom: `1px solid ${BORDER}`, flexShrink: 0 },
-  headerTitle: { fontFamily: "'Bebas Neue', sans-serif", fontSize: 16, letterSpacing: '1.5px', color: '#fff' },
-  clearBtn:    { fontSize: 11, color: '#555', background: 'none', border: 'none', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" },
+  header:      { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 16px 9px', borderBottom: `1px solid ${BORDER}`, flexShrink: 0 },
+  headerTitle: { fontFamily: "'Bebas Neue', sans-serif", fontSize: 17, letterSpacing: '1.5px', color: '#fff' },
+  clearBtn:    { fontSize: 12, color: '#555', background: 'none', border: 'none', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" },
   msgs:        { flex: 1, overflowY: 'auto', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 12, minHeight: 0 },
-  msg:         { maxWidth: '88%', padding: '12px 15px', fontSize: 15, lineHeight: 1.65, borderRadius: 16 },
-  msgAi:       { background: CARD, border: `1px solid ${BORDER}`, borderBottomLeftRadius: 3, color: TEXT2, alignSelf: 'flex-start' },
-  msgUser:     { background: GREEN, borderBottomRightRadius: 3, color: '#000', fontWeight: 500, alignSelf: 'flex-end' },
+  msg:         { maxWidth: '88%', padding: '13px 15px', fontSize: 15, lineHeight: 1.65, borderRadius: 16 },
+  // AI messages: dark card, bright text
+  msgAi:       { background: CARD, border: `1px solid ${BORDER}`, borderBottomLeftRadius: 3, color: '#d8dce8', alignSelf: 'flex-start' },
+  // User messages: subtle dark blue-grey, NOT the aggressive lime green
+  msgUser:     { background: '#2a3048', border: '1px solid #3a4060', borderBottomRightRadius: 3, color: '#fff', fontWeight: 500, alignSelf: 'flex-end' },
   bar:         { padding: '10px 16px 14px', display: 'flex', gap: 8, alignItems: 'flex-end', borderTop: `1px solid ${BORDER}`, background: '#000', flexShrink: 0 },
-  input:       {
-    flex: 1, background: CARD, border: `1px solid ${BORDER}`, borderRadius: 12,
-    padding: '10px 14px', fontSize: 16, color: '#fff',
-    fontFamily: "'DM Sans', sans-serif",
-    resize: 'none', outline: 'none', maxHeight: 120, lineHeight: 1.5,
-    minWidth: 0,
-  },
-  sendBtn: { width: 40, height: 40, borderRadius: 10, background: GREEN, border: 'none', cursor: 'pointer', fontSize: 18, fontWeight: 700, color: '#000', flexShrink: 0 },
-  dot:     { display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: GREEN, margin: '0 2px', animation: 'pulse 1.2s infinite' },
+  input:       { flex: 1, background: CARD, border: `1px solid ${BORDER}`, borderRadius: 12, padding: '10px 14px', fontSize: 16, color: '#fff', fontFamily: "'DM Sans', sans-serif", resize: 'none', outline: 'none', maxHeight: 120, lineHeight: 1.5, minWidth: 0 },
+  sendBtn:     { width: 42, height: 42, borderRadius: 10, background: GREEN, border: 'none', cursor: 'pointer', fontSize: 18, fontWeight: 700, color: '#000', flexShrink: 0 },
+  dot:         { display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: GREEN, margin: '0 2px', animation: 'pulse 1.2s infinite' },
 }
