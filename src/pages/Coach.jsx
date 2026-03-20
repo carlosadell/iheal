@@ -3,7 +3,6 @@ import { useState, useRef, useEffect } from 'react'
 const GREEN  = '#c5f135'
 const CARD   = '#1e2128'
 const BORDER = '#2a2e38'
-const TEXT3  = '#6a6e7a'
 
 const SYSTEM = `You are Carlos's personal AI health coach inside iHeal. Carlos is Spanish, 45 years old, entrepreneur, based in Saint Petersburg, Russia.
 
@@ -21,7 +20,7 @@ BODY COMPOSITION (Mar 16, standard mode): 78.7kg, 26% BF, muscle 55.3kg, viscera
 
 LABS: ApoB 82 mg/dL (ok), fasting insulin 4.2 µIU/mL (ok), homocysteine 11.2 µmol/L (elevated — methylated B-complex addresses), GGT 22 U/L (ok), Vitamin D3 114.7 ng/mL (high — supraphysiologic July 2025, K2 2 caps protective). Pending: CRP, HbA1c, transferrin saturation.
 
-PSYCHIATRIST: Dr. Anton, Домой Линник SPB, phone 8-952-244-18-27, F40.2. Next appointment ~5 April 2026. Contact via Telegram.
+PSYCHIATRIST: Dr. Anton, Домой Линник SPB, F40.2. Next appointment ~5 April 2026. Contact via Telegram.
 
 INTELLECTUAL FRAMEWORK: Mechanism-first. LDL alone ≠ CVD. Inflammation + insulin resistance are root causes. Priority biomarkers: ApoB, oxidized LDL, CRP, homocysteine, fasting insulin, HRV, deep sleep %. Medication is last-line not first-line.
 
@@ -50,7 +49,11 @@ export default function Coach() {
     try {
       const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': import.meta.env.VITE_ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01',
+        },
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
           max_tokens: 1000,
@@ -120,7 +123,7 @@ const s = {
     resize: 'none', outline: 'none', maxHeight: 80, lineHeight: 1.4,
   },
   sendBtn: { width: 38, height: 38, borderRadius: 10, background: GREEN, border: 'none', cursor: 'pointer', fontSize: 18, fontWeight: 700, color: '#000', flexShrink: 0 },
-  dot:     {
+  dot: {
     display: 'inline-block', width: 6, height: 6, borderRadius: '50%',
     background: GREEN, margin: '0 2px',
     animation: 'pulse 1.2s infinite',
