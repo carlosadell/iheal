@@ -23,10 +23,10 @@ export default function Home({ setPage, doneProt, totalProt, macroTab, setMacroT
         <div style={s.heroOverlay} />
         <div style={s.heroGlow} />
         <div style={s.heroContent}>
-          <div style={s.eyebrow}>Day {dayNum} · Retatrutide Protocol</div>
+          <div style={s.eyebrow}>Day 12 · Retatrutide Protocol</div>
           <div style={s.heroTitle}>CARLOS</div>
           <div style={s.heroSub}>
-            {todayStr}
+            Saint Petersburg · March 20, 2026
             {time ? <span style={{ color: GREEN }}> · {time}</span> : null}
           </div>
         </div>
