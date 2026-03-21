@@ -5,7 +5,11 @@ import Coach from './pages/Coach'
 import Profile from './pages/Profile'
 import Reports from './pages/Reports'
 import Settings from './pages/Settings'
-import { seedProfile, seedSleepLogs, seedBodyComposition, seedLabResults, seedMacroLogs, recommendedNextLabs } from './data/seed'
+import { seedProfile, recommendedNextLabs } from './data/seed'
+import {
+  fetchSleepLogs, fetchBodyComposition, fetchMacroLogs,
+  fetchLabResults, fetchBpLogs, upsertProtocolCheck, fetchProtocolChecks
+} from './lib/supabase'
 
 const NAV = [
   { id: 'home',     label: 'Home',     icon: '⬡' },
@@ -14,8 +18,6 @@ const NAV = [
   { id: 'profile',  label: 'Profile',  icon: '◉' },
   { id: 'reports',  label: 'Reports',  icon: '◎' },
 ]
-
-// ─── Protocol and supplement item definitions (no done state here) ───────────
 
 const PROTOCOL_ITEMS = [
   {key:'epi',    icon:'🧬', name:'Epitalon',               sub:'2mg subQ · before bed',             time:'~21:00', group:'peptide'},
@@ -38,83 +40,70 @@ const SUPPLEMENT_ITEMS = [
 const PROTOCOL_START = new Date('2026-03-09')
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
 
-// ─── Date helpers — computed immediately, not in useEffect ────────────────────
-
 function getTodayKey() {
   const n = new Date()
   return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`
 }
-
 function getTodayStr() {
   const n = new Date()
   return `Saint Petersburg · ${MONTHS[n.getMonth()]} ${n.getDate()}, ${n.getFullYear()}`
 }
-
 function getDayNum() {
   const diff = Math.floor((new Date() - PROTOCOL_START) / (1000*60*60*24)) + 1
   return diff > 0 ? diff : 1
 }
-
 function getTime() {
   const n = new Date()
   return `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`
 }
 
-// ─── LocalStorage persistence for daily check state ──────────────────────────
-
-function loadSavedChecks() {
-  try {
-    const raw = localStorage.getItem('iheal_checks')
-    if (!raw) return null
-    const parsed = JSON.parse(raw)
-    // Discard if saved on a different day — automatic daily reset
-    if (parsed.date !== getTodayKey()) return null
-    return parsed
-  } catch {
-    return null
-  }
-}
-
-function persistChecks(protocolArr, supplementsArr) {
-  try {
-    localStorage.setItem('iheal_checks', JSON.stringify({
-      date:        getTodayKey(),
-      protocol:    Object.fromEntries(protocolArr.map(p => [p.key, p.done])),
-      supplements: Object.fromEntries(supplementsArr.map(s => [s.key, s.done])),
-    }))
-  } catch {}
-}
-
-// ─── Build initial state, restoring today's checks if they exist ─────────────
-
-function buildInitialProtocol() {
+function buildProtocolItems() {
   const isMonday = new Date().getDay() === 1
-  const saved    = loadSavedChecks()
-  const items    = [...PROTOCOL_ITEMS]
-  if (isMonday) {
-    items.unshift({key:'ret', icon:'💉', name:'Retatrutide', sub:'1mg subcutaneous · after food', time:'Monday', group:'peptide'})
-  }
-  return items.map(p => ({ ...p, done: saved?.protocol?.[p.key] ?? false }))
+  const items = [...PROTOCOL_ITEMS]
+  if (isMonday) items.unshift({key:'ret', icon:'💉', name:'Retatrutide', sub:'1mg subcutaneous · after food', time:'Monday', group:'peptide'})
+  return items
 }
-
-function buildInitialSupplements() {
-  const saved = loadSavedChecks()
-  return SUPPLEMENT_ITEMS.map(s => ({ ...s, done: saved?.supplements?.[s.key] ?? false }))
-}
-
-// ─── App ──────────────────────────────────────────────────────────────────────
 
 export default function App() {
-  const [page,       setPage]    = useState('home')
-  const [protocol,   setProtocol] = useState(buildInitialProtocol)
-  const [supplements, setSupps]  = useState(buildInitialSupplements)
-  const [macroTab,   setMacroTab] = useState('kcal')
-  // Initialise date/time immediately so there is no flash of wrong values
-  const [time,    setTime]    = useState(getTime)
-  const [todayStr,setTodayStr] = useState(getTodayStr)
-  const [dayNum,  setDayNum]  = useState(getDayNum)
+  const [page,        setPage]     = useState('home')
+  const [protocol,    setProtocol] = useState(() => buildProtocolItems().map(p => ({...p, done:false})))
+  const [supplements, setSupps]    = useState(() => SUPPLEMENT_ITEMS.map(s => ({...s, done:false})))
+  const [macroTab,    setMacroTab] = useState('kcal')
+  const [time,        setTime]     = useState(getTime)
+  const [todayStr,    setTodayStr] = useState(getTodayStr)
+  const [dayNum,      setDayNum]   = useState(getDayNum)
+  const [sleepLogs,   setSleepLogs]  = useState([])
+  const [bodyComp,    setBodyComp]   = useState([])
+  const [macroLogs,   setMacroLogs]  = useState([])
+  const [labResults,  setLabResults] = useState([])
+  const [bpLogs,      setBpLogs]     = useState([])
+  const [loading,     setLoading]    = useState(true)
 
-  // Tick every 10 seconds to keep time/date fresh
+  useEffect(() => {
+    async function loadAll() {
+      const [sleep, body, macros, labs, bp, checks] = await Promise.all([
+        fetchSleepLogs(),
+        fetchBodyComposition(),
+        fetchMacroLogs(),
+        fetchLabResults(),
+        fetchBpLogs(),
+        fetchProtocolChecks(getTodayKey()),
+      ])
+      if (sleep.length)  setSleepLogs(sleep)
+      if (body.length)   setBodyComp(body)
+      if (macros.length) setMacroLogs(macros)
+      if (labs.length)   setLabResults(labs)
+      if (bp.length)     setBpLogs(bp)
+      if (checks.length) {
+        const checkMap = Object.fromEntries(checks.map(c => [c.key, c.done]))
+        setProtocol(p => p.map(i => ({...i, done: checkMap[i.key] ?? false})))
+        setSupps(s => s.map(i => ({...i, done: checkMap[i.key] ?? false})))
+      }
+      setLoading(false)
+    }
+    loadAll()
+  }, [])
+
   useEffect(() => {
     const id = setInterval(() => {
       setTime(getTime())
@@ -124,31 +113,36 @@ export default function App() {
     return () => clearInterval(id)
   }, [])
 
-  // Persist checks to localStorage whenever the user taps a checkbox
-  useEffect(() => {
-    persistChecks(protocol, supplements)
-  }, [protocol, supplements])
-
-  const togProto = (key) => setProtocol(p => p.map(i => i.key===key ? {...i, done:!i.done} : i))
-  const togSupp  = (key) => setSupps(s  => s.map(i => i.key===key ? {...i, done:!i.done} : i))
-
-  const shared = {
-    protocol, supplements, macroTab, time, todayStr, dayNum,
-    setMacroTab, togProto, togSupp, setPage,
-    sleepLogs:  seedSleepLogs,
-    bodyComp:   seedBodyComposition,
-    labResults: seedLabResults,
-    macroLogs:  seedMacroLogs,
-    profile:    seedProfile,
-    nextLabs:   recommendedNextLabs,
-    isMonday:   new Date().getDay() === 1,
+  const togProto = async (key) => {
+    let newDone
+    setProtocol(p => p.map(i => { if (i.key !== key) return i; newDone = !i.done; return {...i, done:newDone} }))
+    await upsertProtocolCheck(getTodayKey(), key, newDone)
   }
 
-  const G = '#c5f135', BG = '#000', CARD = '#1e2128', BORDER = '#2a2e38'
-  const T = '#fff', T3 = '#808490'
+  const togSupp = async (key) => {
+    let newDone
+    setSupps(s => s.map(i => { if (i.key !== key) return i; newDone = !i.done; return {...i, done:newDone} }))
+    await upsertProtocolCheck(getTodayKey(), key, newDone)
+  }
+
+  const shared = {
+    protocol, supplements, macroTab, time, todayStr, dayNum, loading,
+    setMacroTab, togProto, togSupp, setPage,
+    sleepLogs, bodyComp, labResults, macroLogs, bpLogs,
+    profile:  seedProfile,
+    nextLabs: recommendedNextLabs,
+    isMonday: new Date().getDay() === 1,
+    refreshSleep:  () => fetchSleepLogs().then(d => { if(d.length) setSleepLogs(d) }),
+    refreshMacros: () => fetchMacroLogs().then(d => { if(d.length) setMacroLogs(d) }),
+    refreshBody:   () => fetchBodyComposition().then(d => { if(d.length) setBodyComp(d) }),
+    refreshBp:     () => fetchBpLogs().then(d => setBpLogs(d)),
+    refreshLabs:   () => fetchLabResults().then(d => { if(d.length) setLabResults(d) }),
+  }
+
+  const G = '#c5f135', BG = '#000', BORDER = '#2a2e38', T3 = '#808490'
 
   return (
-    <div style={{position:'fixed',inset:0,display:'flex',flexDirection:'column',maxWidth:430,margin:'0 auto',background:BG,color:T,fontFamily:"'DM Sans',sans-serif"}}>
+    <div style={{position:'fixed',inset:0,display:'flex',flexDirection:'column',maxWidth:430,margin:'0 auto',background:BG,color:'#fff',fontFamily:"'DM Sans',sans-serif"}}>
       <div style={{height:54,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 16px',borderBottom:`1px solid ${BORDER}`,background:BG,flexShrink:0,zIndex:20}}>
         <div style={{display:'flex',alignItems:'center',gap:8}}>
           <div style={{width:30,height:30,background:G,borderRadius:8,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:16,color:'#000'}}>iH</div>
