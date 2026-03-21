@@ -285,7 +285,7 @@ export default function Coach() {
           width:42,height:42,borderRadius:10,background:CARD,border:`1px solid ${pendingImage?G:BORDER}`,
           cursor:'pointer',fontSize:19,flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',
         }}>
-          📷
+          📎
         </button>
 
         <textarea ref={inputRef} value={input}
