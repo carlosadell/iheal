@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { insertSleepLog, insertMacroLog, insertBodyComposition, insertBpLog, upsertLabResult } from '../lib/supabase'
+import { insertSleepLog, insertMacroLog, insertBodyComposition, insertBpLog, upsertLabResult, insertReport } from '../lib/supabase'
 
 const G='#c5f135', CARD='#1e2128', BORDER='#2a2e38'
 
@@ -190,6 +190,7 @@ export default function Coach({ refreshSleep, refreshMacros, refreshBody, refres
   const [thinking,     setThinking]     = useState(false)
   const [pendingImage, setPendingImage] = useState(null)
   const [copied,       setCopied]       = useState(null)
+  const [savedReport,  setSavedReport]  = useState(null)
   const bottomRef = useRef(null)
   const inputRef  = useRef(null)
   const fileRef   = useRef(null)
@@ -226,10 +227,17 @@ export default function Coach({ refreshSleep, refreshMacros, refreshBody, refres
 
   const shareMsg = (text) => {
     if (navigator.share) {
-      navigator.share({ text })
+      navigator.share({ title: 'iHeal Coach', text })
     } else {
       copyMsg(text)
     }
+  }
+
+  const saveAsReport = async (text) => {
+    const date = new Date().toISOString().slice(0,10)
+    await insertReport({ date, recipient: 'Personal Record', language: 'English', content: text, notes: 'Saved from Coach' })
+    setSavedReport(text)
+    setTimeout(() => setSavedReport(null), 3000)
   }
 
   const downloadMsg = (text) => {
@@ -237,7 +245,7 @@ export default function Coach({ refreshSleep, refreshMacros, refreshBody, refres
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `iheal-coach-${new Date().toISOString().slice(0,10)}.txt`
+    a.download = `iheal-coach-${new Date().toISOString().slice(0,10)}.md`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -341,20 +349,27 @@ export default function Coach({ refreshSleep, refreshMacros, refreshBody, refres
               )}
               {m.role==='ai' ? renderMarkdown(m.text) : m.text !== '(photo)' ? m.text : null}
             </div>
-            {/* Action buttons for AI messages — icon style like Claude app */}
+            {/* Action buttons for AI messages */}
             {m.role==='ai' && i > 0 && (
-              <div style={{display:'flex',gap:2,marginTop:4,paddingLeft:2}}>
-                <button onClick={()=>copyMsg(m.text)} title={copied===m.text?'Copied!':'Copy'} style={{width:32,height:32,borderRadius:8,background:copied===m.text?'rgba(197,241,53,.12)':'transparent',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:copied===m.text?G:'#666',fontSize:15,transition:'.15s'}}>
-                  {copied===m.text ? '✓' : '⎘'}
+              <div style={{display:'flex',gap:6,marginTop:6,paddingLeft:2}}>
+                <button onClick={()=>copyMsg(m.text)} title={copied===m.text?'Copied!':'Copy'} style={{display:'flex',alignItems:'center',gap:4,padding:'5px 10px',borderRadius:8,background:copied===m.text?'rgba(197,241,53,.15)':'rgba(255,255,255,.06)',border:'none',cursor:'pointer',color:copied===m.text?G:'#aaa',fontSize:13,fontFamily:"'DM Sans',sans-serif",transition:'.15s'}}>
+                  <span style={{fontSize:14}}>{copied===m.text ? '✓' : '⎘'}</span>
+                  <span>{copied===m.text ? 'Copied' : 'Copy'}</span>
                 </button>
-                <button onClick={()=>shareMsg(m.text)} title="Share" style={{width:32,height:32,borderRadius:8,background:'transparent',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:'#666',fontSize:15}}>
-                  ↗
+                <button onClick={()=>shareMsg(m.text)} title="Share" style={{display:'flex',alignItems:'center',gap:4,padding:'5px 10px',borderRadius:8,background:'rgba(255,255,255,.06)',border:'none',cursor:'pointer',color:'#aaa',fontSize:13,fontFamily:"'DM Sans',sans-serif"}}>
+                  <span style={{fontSize:14}}>↗</span>
+                  <span>Share</span>
                 </button>
                 {m.text.length > 300 && (
-                  <button onClick={()=>downloadMsg(m.text)} title="Download" style={{width:32,height:32,borderRadius:8,background:'transparent',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:'#666',fontSize:15}}>
-                    ↓
+                  <button onClick={()=>downloadMsg(m.text)} title="Download as markdown" style={{display:'flex',alignItems:'center',gap:4,padding:'5px 10px',borderRadius:8,background:'rgba(255,255,255,.06)',border:'none',cursor:'pointer',color:'#aaa',fontSize:13,fontFamily:"'DM Sans',sans-serif"}}>
+                    <span style={{fontSize:14}}>↓</span>
+                    <span>Save</span>
                   </button>
                 )}
+                <button onClick={()=>saveAsReport(m.text)} style={{display:'flex',alignItems:'center',gap:4,padding:'5px 10px',borderRadius:8,background:savedReport===m.text?'rgba(197,241,53,.15)':'rgba(255,255,255,.06)',border:'none',cursor:'pointer',color:savedReport===m.text?G:'#aaa',fontSize:13,fontFamily:"'DM Sans',sans-serif",transition:'.15s'}}>
+                  <span style={{fontSize:14}}>{savedReport===m.text ? '✓' : '🗂'}</span>
+                  <span>{savedReport===m.text ? 'Saved!' : 'Report'}</span>
+                </button>
               </div>
             )}
           </div>
