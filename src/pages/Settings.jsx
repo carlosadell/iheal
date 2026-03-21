@@ -1,75 +1,74 @@
 import { useState } from 'react'
-import { seedProfile, seedDoctor } from '../data/seed.js'
+import { seedProfile } from '../data/seed.js'
 
-const GREEN  = '#c5f135'
-const CARD   = '#1e2128'
-const BORDER = '#2a2e38'
-const TEXT2  = '#c8ccd8'
-const TEXT3  = '#888a96'
+const G='#c5f135', CARD='#1e2128', BORDER='#2a2e38'
+const T='#fff', T2='#b0b4c0', T3='#6a6e7a', FD="'Bebas Neue',sans-serif"
+const card = {background:CARD,borderRadius:14,border:`1px solid ${BORDER}`,overflow:'hidden',margin:'0 16px'}
 
-export default function Settings({ goals, setGoals, setPage }) {
+export default function Settings({setPage}) {
+  const [goals, setGoals] = useState({
+    weight: '75–76 kg', bodyFat: 'Sub-20%', deepSleep: '15%+',
+    calories: '1,950 kcal', protein: '170g', fat: '110–120g', carbs: '50–70g',
+  })
   const [editing, setEditing] = useState(null)
   const [tempVal, setTempVal] = useState('')
 
-  const startEdit = (key, current) => { setEditing(key); setTempVal(String(current)) }
-  const saveEdit  = (key) => {
-    const num = parseFloat(tempVal)
-    if (!isNaN(num)) setGoals(prev => ({ ...prev, [key]: num }))
-    setEditing(null)
-  }
+  const startEdit = (key, val) => { setEditing(key); setTempVal(val) }
+  const saveEdit  = (key) => { setGoals(g => ({...g, [key]: tempVal})); setEditing(null) }
+
+  const personal = [
+    ['Full name',     'Carlos Adell Carceller'],
+    ['Date of birth', '22 August 1980'],
+    ['Age',           '45'],
+    ['Sex',           'Male'],
+    ['Location',      'Saint Petersburg, Russia'],
+    ['Timezone',      'MSK (UTC+3)'],
+  ]
+
+  const goalFields = [
+    ['weight',    'Target Weight'],
+    ['bodyFat',   'Target Body Fat'],
+    ['deepSleep', 'Deep Sleep Target'],
+    ['calories',  'Calorie Target'],
+    ['protein',   'Protein Target'],
+    ['fat',       'Fat Target'],
+    ['carbs',     'Carbs Target'],
+  ]
 
   return (
-    <div>
-      {/* Back button */}
-      <div style={s.backRow} onClick={() => setPage('profile')}>
-        <span style={s.backArrow}>‹</span>
-        <span style={s.backLabel}>Profile</span>
+    <div style={{background:'#000',minHeight:'100%'}}>
+      <div style={{display:'flex',alignItems:'center',gap:6,padding:'14px 16px 6px',cursor:'pointer'}} onClick={()=>setPage('profile')}>
+        <span style={{fontSize:22,color:G,lineHeight:1}}>‹</span>
+        <span style={{fontSize:15,color:G,fontWeight:500}}>Profile</span>
       </div>
 
-      <div style={s.sec}>Personal</div>
-      <div style={s.card}>
-        {[
-          ['Full Name',   seedProfile.full_name],
-          ['Age',         '45'],
-          ['DOB',         seedProfile.date_of_birth],
-          ['Sex',         seedProfile.sex],
-          ['Location',    seedProfile.location],
-          ['Timezone',    seedProfile.timezone],
-          ['Nationality', seedProfile.nationality],
-        ].map(([l, v]) => (
-          <div key={l} style={s.row}>
-            <div style={s.slbl}>{l}</div>
-            <div style={s.sval}>{v}</div>
+      <div style={{fontFamily:FD,fontSize:14,letterSpacing:2,color:T,padding:'8px 16px 9px',textTransform:'uppercase'}}>Personal</div>
+      <div style={card}>
+        {personal.map(([l,v])=>(
+          <div key={l} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 16px',borderBottom:`1px solid ${BORDER}`}}>
+            <span style={{fontSize:14,color:T}}>{l}</span>
+            <span style={{fontSize:13,color:T2}}>{v}</span>
           </div>
         ))}
       </div>
 
-      <div style={s.sec}>Health Goals</div>
-      <div style={s.card}>
-        {[
-          { key: 'target_weight_kg',     label: 'Target Weight',     suffix: 'kg'   },
-          { key: 'target_body_fat_pct',  label: 'Target Body Fat',   suffix: '%'    },
-          { key: 'deep_sleep_target_pct',label: 'Deep Sleep Target', suffix: '%'    },
-          { key: 'calories',             label: 'Calorie Target',    suffix: 'kcal' },
-          { key: 'protein_g',            label: 'Protein Target',    suffix: 'g'    },
-          { key: 'fat_g',                label: 'Fat Target',        suffix: 'g'    },
-          { key: 'carbs_g',              label: 'Carbs Target',      suffix: 'g'    },
-        ].map(({ key, label, suffix }) => (
-          <div key={key} style={s.row}>
-            <div style={s.slbl}>{label}</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              {editing === key ? (
+      <div style={{fontFamily:FD,fontSize:14,letterSpacing:2,color:T,padding:'13px 16px 9px',textTransform:'uppercase'}}>Health Goals</div>
+      <div style={card}>
+        {goalFields.map(([key,label])=>(
+          <div key={key} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 16px',borderBottom:`1px solid ${BORDER}`}}>
+            <span style={{fontSize:14,color:T}}>{label}</span>
+            <div style={{display:'flex',alignItems:'center',gap:10}}>
+              {editing===key ? (
                 <>
-                  <input value={tempVal} onChange={e => setTempVal(e.target.value)}
-                    onBlur={() => saveEdit(key)} onKeyDown={e => e.key === 'Enter' && saveEdit(key)}
-                    autoFocus style={s.editInput} />
-                  <span style={{ fontSize: 12, color: TEXT3 }}>{suffix}</span>
-                  <span onClick={() => saveEdit(key)} style={s.sedit}>Save</span>
+                  <input value={tempVal} onChange={e=>setTempVal(e.target.value)}
+                    onBlur={()=>saveEdit(key)} onKeyDown={e=>e.key==='Enter'&&saveEdit(key)}
+                    autoFocus style={{background:'#2e3240',border:`1px solid ${BORDER}`,borderRadius:8,padding:'5px 10px',fontSize:13,color:T,fontFamily:"'DM Sans',sans-serif",outline:'none',width:100,textAlign:'right'}}/>
+                  <span onClick={()=>saveEdit(key)} style={{fontSize:12,color:G,fontWeight:600,cursor:'pointer'}}>Save</span>
                 </>
               ) : (
                 <>
-                  <div style={s.sval}>{goals[key]} {suffix}</div>
-                  <div onClick={() => startEdit(key, goals[key])} style={s.sedit}>Edit</div>
+                  <span style={{fontSize:13,color:T2}}>{goals[key]}</span>
+                  <span onClick={()=>startEdit(key,goals[key])} style={{fontSize:12,color:G,fontWeight:600,cursor:'pointer'}}>Edit</span>
                 </>
               )}
             </div>
@@ -77,42 +76,28 @@ export default function Settings({ goals, setGoals, setPage }) {
         ))}
       </div>
 
-      <div style={s.sec}>Prescribing Doctor</div>
-      <div style={s.card}>
-        {[
-          ['Doctor',    seedDoctor.name],
-          ['Clinic',    seedDoctor.clinic + ', SPB'],
-          ['Diagnosis', seedDoctor.diagnosis],
-          ['Next Appt', seedDoctor.next_appointment],
-          ['Contact',   seedDoctor.contact],
-        ].map(([l, v]) => (
-          <div key={l} style={s.row}>
-            <div style={s.slbl}>{l}</div>
-            <div style={s.sval}>{v}</div>
+      <div style={{fontFamily:FD,fontSize:14,letterSpacing:2,color:T,padding:'13px 16px 9px',textTransform:'uppercase'}}>Doctor</div>
+      <div style={card}>
+        {[['Doctor','Dr. Anton'],['Clinic','Домой Линник, SPB'],['Diagnosis','F40.2'],['Next Appt','~5 Apr 2026'],['Contact','Telegram']].map(([l,v])=>(
+          <div key={l} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 16px',borderBottom:`1px solid ${BORDER}`}}>
+            <span style={{fontSize:14,color:T}}>{l}</span>
+            <span style={{fontSize:13,color:T2}}>{v}</span>
           </div>
         ))}
       </div>
 
-      <div style={s.sec}>Data</div>
-      <div style={s.card}>
-        <div style={s.row}><div style={s.slbl}>Export all data</div><div style={s.sedit}>Export ↗</div></div>
-        <div style={s.row}><div style={s.slbl}>Sync with Supabase</div><div style={s.sedit}>Sync ↗</div></div>
+      <div style={{fontFamily:FD,fontSize:14,letterSpacing:2,color:T,padding:'13px 16px 9px',textTransform:'uppercase'}}>Data</div>
+      <div style={card}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 16px',borderBottom:`1px solid ${BORDER}`}}>
+          <span style={{fontSize:14,color:T}}>Export all data</span>
+          <span style={{fontSize:12,color:G,fontWeight:600,cursor:'pointer'}}>Export ↗</span>
+        </div>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 16px'}}>
+          <span style={{fontSize:14,color:T}}>Sync with Supabase</span>
+          <span style={{fontSize:12,color:G,fontWeight:600,cursor:'pointer'}}>Coming soon</span>
+        </div>
       </div>
-
-      <div style={{ height: 28 }} />
+      <div style={{height:24}}/>
     </div>
   )
-}
-
-const s = {
-  backRow:   { display: 'flex', alignItems: 'center', gap: 6, padding: '14px 16px 6px', cursor: 'pointer' },
-  backArrow: { fontSize: 22, color: GREEN, lineHeight: 1 },
-  backLabel: { fontSize: 15, color: GREEN, fontWeight: 500 },
-  sec:       { fontFamily: "'Bebas Neue', sans-serif", fontSize: 15, letterSpacing: '2px', color: '#fff', padding: '12px 16px 8px', textTransform: 'uppercase' },
-  card:      { background: CARD, borderRadius: 14, border: `1px solid ${BORDER}`, overflow: 'hidden', margin: '0 16px' },
-  row:       { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '13px 16px', borderBottom: `1px solid ${BORDER}` },
-  slbl:      { fontSize: 14, color: '#fff' },
-  sval:      { fontSize: 14, color: TEXT2 },
-  sedit:     { fontSize: 13, color: GREEN, fontWeight: 600, cursor: 'pointer' },
-  editInput: { background: '#2e3240', border: `1px solid ${BORDER}`, borderRadius: 8, padding: '6px 10px', fontSize: 14, color: '#fff', fontFamily: "'DM Sans', sans-serif", outline: 'none', width: 80, textAlign: 'right' },
 }
