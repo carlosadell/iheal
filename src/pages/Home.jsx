@@ -55,7 +55,7 @@ function BarChart({data, maxVal, colorFn, labelFn, subLabelKey, highlightLast}) 
 }
 
 export default function Home({sleepLogs, macroLogs, protocol, supplements, macroTab, setMacroTab, togProto, togSupp, setPage, profile, time, todayStr, dayNum}) {
-  const last = sleepLogs[sleepLogs.length-1]
+  const last = sleepLogs[sleepLogs.length-1] || {}
   const doneProt = protocol.filter(p=>p.done).length + supplements.filter(s=>s.done).length
   const totalProt = protocol.length + supplements.length
   const isKcal = macroTab==='kcal'
