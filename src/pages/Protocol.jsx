@@ -7,7 +7,7 @@ const TEXT2  = '#c8ccd8'
 const TEXT3  = '#888a96'
 const CARD3  = '#2e3240'
 
-export default function Protocol({ protocol, toggleProtocol, supplements, toggleSupplement, today }) {
+export default function Protocol({ protocol, togProto, supplements, togSupp, today }) {
   const peptides = protocol.filter(p => p.group === 'peptide')
   const meds     = protocol.filter(p => p.group === 'med')
 
@@ -25,7 +25,7 @@ export default function Protocol({ protocol, toggleProtocol, supplements, toggle
       <div style={s.card}>
         <div style={s.groupLbl}>PEPTIDES</div>
         {peptides.map(p => (
-          <div key={p.key} style={s.row} onClick={() => toggleProtocol(p.key)}>
+          <div key={p.key} style={s.row} onClick={() => togProto(p.key)}>
             <div style={s.rowL}>
               <div style={s.ricon}>{p.icon}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -50,7 +50,7 @@ export default function Protocol({ protocol, toggleProtocol, supplements, toggle
         )}
         <div style={s.groupLbl}>MEDICATIONS</div>
         {meds.map(p => (
-          <div key={p.key} style={s.row} onClick={() => toggleProtocol(p.key)}>
+          <div key={p.key} style={s.row} onClick={() => togProto(p.key)}>
             <div style={s.rowL}>
               <div style={s.ricon}>{p.icon}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -73,7 +73,7 @@ export default function Protocol({ protocol, toggleProtocol, supplements, toggle
       <div style={s.sec}>Supplements</div>
       <div style={s.card}>
         {supplements.map(sup => (
-          <div key={sup.key} style={s.row} onClick={() => toggleSupplement(sup.key)}>
+          <div key={sup.key} style={s.row} onClick={() => togSupp(sup.key)}>
             <div style={s.rowL}>
               <div style={s.ricon}>{sup.icon}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
