@@ -2,6 +2,36 @@ import { useState, useEffect } from 'react'
 import { insertReport, fetchReports, deleteReport } from '../lib/supabase'
 
 const G='#c5f135', CARD='#1e2128', CARD3='#2e3240', BORDER='#2a2e38'
+
+function renderInline(text) {
+  const parts = text.split(/(\*\*\*[^*]+\*\*\*|\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/)
+  return parts.map((part, i) => {
+    if (part.startsWith('***') && part.endsWith('***')) return <strong key={i} style={{fontStyle:'italic',color:'#fff'}}>{part.slice(3,-3)}</strong>
+    if (part.startsWith('**') && part.endsWith('**')) return <strong key={i} style={{color:'#fff',fontWeight:600}}>{part.slice(2,-2)}</strong>
+    if (part.startsWith('*') && part.endsWith('*') && part.length > 2) return <em key={i} style={{color:'#c8ccd8'}}>{part.slice(1,-1)}</em>
+    if (part.startsWith('`') && part.endsWith('`') && part.length > 2) return <code key={i} style={{background:'#0d0d0d',borderRadius:4,padding:'1px 5px',fontSize:12,fontFamily:'monospace',color:G}}>{part.slice(1,-1)}</code>
+    return <span key={i}>{part}</span>
+  })
+}
+
+function renderMarkdown(text) {
+  const lines = text.split('\n')
+  const elements = []
+  let i = 0
+  while (i < lines.length) {
+    const line = lines[i]
+    if (line.startsWith('## ')) { elements.push(<div key={i} style={{fontWeight:700,fontSize:16,color:'#fff',marginTop:16,marginBottom:4}}>{renderInline(line.slice(3))}</div>); i++; continue }
+    if (line.startsWith('### ')) { elements.push(<div key={i} style={{fontWeight:600,fontSize:15,color:'#fff',marginTop:12,marginBottom:3}}>{renderInline(line.slice(4))}</div>); i++; continue }
+    if (line.startsWith('# ')) { elements.push(<div key={i} style={{fontWeight:700,fontSize:18,color:'#fff',marginTop:16,marginBottom:6}}>{renderInline(line.slice(2))}</div>); i++; continue }
+    if (line.match(/^---+$/)) { elements.push(<div key={i} style={{borderTop:`1px solid ${BORDER}`,margin:'10px 0'}}/>); i++; continue }
+    if (line.match(/^[-•*]\s/)) { elements.push(<div key={i} style={{display:'flex',gap:8,marginTop:4,paddingLeft:4}}><span style={{color:G,flexShrink:0}}>•</span><span>{renderInline(line.replace(/^[-•*]\s/,''))}</span></div>); i++; continue }
+    if (line.match(/^\d+\.\s/)) { const num = line.match(/^(\d+)\./)[1]; elements.push(<div key={i} style={{display:'flex',gap:8,marginTop:4,paddingLeft:4}}><span style={{color:G,flexShrink:0,minWidth:18,fontWeight:600}}>{num}.</span><span>{renderInline(line.replace(/^\d+\.\s/,''))}</span></div>); i++; continue }
+    if (line.trim() === '') { elements.push(<div key={i} style={{height:8}}/>); i++; continue }
+    elements.push(<div key={i} style={{marginTop:i===0?0:2,lineHeight:1.65}}>{renderInline(line)}</div>)
+    i++
+  }
+  return elements
+}
 const T='#fff', T2='#b0b4c0', T3='#6a6e7a', FD="'Bebas Neue',sans-serif"
 const card = {background:CARD,borderRadius:14,border:`1px solid ${BORDER}`,overflow:'hidden',margin:'0 16px'}
 const inputStyle = {width:'100%',background:CARD,border:`1px solid ${BORDER}`,borderRadius:10,padding:'11px 14px',fontSize:16,color:T,fontFamily:"'DM Sans',sans-serif",outline:'none',boxSizing:'border-box'}
@@ -16,39 +46,62 @@ Write a professional clinical report in the requested language. Be precise and c
 
 // Convert markdown text to simple HTML for PDF printing
 function markdownToHtml(text, title) {
-  let html = text
-    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+  const lines = text.split('\n')
+  let body = ''
+  for (const line of lines) {
+    if (line.startsWith('### ')) body += `<h3>${line.slice(4)}</h3>\n`
+    else if (line.startsWith('## ')) body += `<h2>${line.slice(3)}</h2>\n`
+    else if (line.startsWith('# ')) body += `<h1>${line.slice(2)}</h1>\n`
+    else if (line.match(/^---+$/)) body += `<hr>\n`
+    else if (line.match(/^[-•*]\s/)) body += `<li>${line.replace(/^[-•*]\s/,'')}</li>\n`
+    else if (line.match(/^\d+\.\s/)) body += `<li>${line.replace(/^\d+\.\s/,'')}</li>\n`
+    else if (line.trim() === '') body += `<br>\n`
+    else body += `<p>${line}</p>\n`
+  }
+  // Apply inline formatting
+  body = body
+    .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/^[-•] (.+)$/gm, '<li>$1</li>')
-    .replace(/^\d+\. (.+)$/gm, '<li>$1</li>')
-    .replace(/^---+$/gm, '<hr>')
-    .replace(/\n\n/g, '</p><p>')
-    .replace(/\n/g, '<br>')
+    .replace(/`(.+?)`/g, '<code>$1</code>')
+
+  const date = new Date().toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' })
 
   return `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
+<title>${title}</title>
 <style>
-  body { font-family: Georgia, serif; max-width: 700px; margin: 40px auto; padding: 0 20px; color: #111; line-height: 1.6; }
-  h1 { font-size: 22px; border-bottom: 2px solid #111; padding-bottom: 8px; }
-  h2 { font-size: 18px; margin-top: 24px; }
-  h3 { font-size: 15px; margin-top: 16px; }
-  li { margin: 4px 0; }
-  hr { border: none; border-top: 1px solid #ccc; margin: 20px 0; }
-  .title { font-size: 11px; color: #888; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 1px; }
-  .header { margin-bottom: 32px; }
+  @page { margin: 2cm; }
+  * { box-sizing: border-box; }
+  body { font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 720px; margin: 0 auto; padding: 40px 24px; color: #1a1a1a; line-height: 1.65; font-size: 14px; }
+  .report-header { border-bottom: 3px solid #1a1a1a; padding-bottom: 16px; margin-bottom: 32px; }
+  .report-brand { font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #888; margin-bottom: 6px; }
+  .report-title { font-size: 22px; font-weight: 700; color: #1a1a1a; margin: 0 0 4px; }
+  .report-date { font-size: 12px; color: #888; }
+  h1 { font-size: 20px; font-weight: 700; margin: 28px 0 8px; border-bottom: 1px solid #ddd; padding-bottom: 6px; }
+  h2 { font-size: 16px; font-weight: 700; margin: 22px 0 6px; color: #222; }
+  h3 { font-size: 14px; font-weight: 700; margin: 16px 0 4px; color: #333; }
+  p { margin: 6px 0; }
+  li { margin: 4px 0 4px 20px; list-style: disc; }
+  hr { border: none; border-top: 1px solid #ddd; margin: 20px 0; }
+  strong { font-weight: 700; color: #1a1a1a; }
+  em { font-style: italic; }
+  code { background: #f4f4f4; padding: 1px 5px; border-radius: 3px; font-family: monospace; font-size: 12px; }
+  @media print {
+    body { padding: 0; }
+    .no-print { display: none; }
+  }
 </style>
 </head>
 <body>
-<div class="header">
-  <div class="title">iHeal Health Report</div>
-  <h1>${title}</h1>
+<div class="report-header">
+  <div class="report-brand">iHeal · Health Report</div>
+  <div class="report-title">${title}</div>
+  <div class="report-date">Generated ${date}</div>
 </div>
-<p>${html}</p>
+${body}
 </body>
 </html>`
 }
@@ -112,11 +165,13 @@ Format it as a proper medical report with clear sections.`
   const shareAsPdf = (report) => {
     const title = report._title || `${report.recipient} — ${report.date}`
     const html = markdownToHtml(report.content, title)
-    const blob = new Blob([html], { type:'text/html' })
-    const url = URL.createObjectURL(blob)
-    // Open in new tab — user can Print → Save as PDF from browser
-    window.open(url, '_blank')
-    setTimeout(() => URL.revokeObjectURL(url), 10000)
+    // Open print dialog in a new window — user selects Save as PDF
+    const win = window.open('', '_blank')
+    if (!win) return
+    win.document.write(html)
+    win.document.close()
+    win.focus()
+    setTimeout(() => { win.print() }, 400)
   }
 
   const downloadReport = (report) => {
@@ -132,8 +187,18 @@ Format it as a proper medical report with clear sections.`
 
   const shareReport = (report) => {
     const title = report._title || `${report.recipient} — ${report.date}`
+    // Try to share as file (PDF) first, fall back to text
     if (navigator.share) {
-      navigator.share({ title, text: report.content })
+      const html = markdownToHtml(report.content, title)
+      const blob = new Blob([html], { type: 'text/html' })
+      const file = new File([blob], `${title.replace(/[^a-z0-9]/gi,'_')}.html`, { type: 'text/html' })
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        navigator.share({ title, files: [file] }).catch(() => {
+          navigator.share({ title, text: report.content })
+        })
+      } else {
+        navigator.share({ title, text: report.content })
+      }
     } else {
       navigator.clipboard.writeText(report.content)
     }
@@ -195,8 +260,8 @@ Format it as a proper medical report with clear sections.`
         </div>
 
         {/* Report content */}
-        <div style={{margin:'0 16px',background:CARD,border:`1px solid ${BORDER}`,borderRadius:14,padding:'16px',fontSize:14,lineHeight:1.7,color:T2,whiteSpace:'pre-wrap'}}>
-          {selected.content}
+        <div style={{margin:'0 16px',background:CARD,border:`1px solid ${BORDER}`,borderRadius:14,padding:'16px',fontSize:14,lineHeight:1.7,color:T2}}>
+          {renderMarkdown(selected.content)}
         </div>
         <div style={{height:24}}/>
       </div>
