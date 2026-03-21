@@ -49,7 +49,9 @@ For bp: date, time_of_day, systolic, diastolic, pulse, notes
 For lab: name, value, unit, range, status, date
 Only include DATA_LOG if Carlos has shared specific numbers to log. Never fabricate data.
 
-Respond naturally, with the same depth and warmth as a knowledgeable doctor friend. Use markdown formatting — headers, bold, bullets as appropriate. No artificial length limits. Analyse photos carefully when shared.`
+Respond naturally, with the same depth and warmth as a knowledgeable doctor friend. Use markdown formatting — headers, bold, bullets as appropriate. No artificial length limits. Analyse photos carefully when shared.
+
+REPORTS AND PDFs: When Carlos asks for a PDF, clinical report, or document — generate the full report content right here in the chat in clean formatted markdown. The Download button on every response saves it as a text file. For reports saved permanently to his records, the Reports tab does that. Never say you cannot generate reports or PDFs.`
 
 // ── Markdown renderer matching Claude app style ───────────────────────────────
 function renderMarkdown(text) {
@@ -339,18 +341,18 @@ export default function Coach({ refreshSleep, refreshMacros, refreshBody, refres
               )}
               {m.role==='ai' ? renderMarkdown(m.text) : m.text !== '(photo)' ? m.text : null}
             </div>
-            {/* Action buttons for AI messages */}
+            {/* Action buttons for AI messages — icon style like Claude app */}
             {m.role==='ai' && i > 0 && (
-              <div style={{display:'flex',gap:6,marginTop:4,paddingLeft:2}}>
-                <button onClick={()=>copyMsg(m.text)} style={{fontSize:11,color:copied===m.text?G:'#555',background:'none',border:'none',cursor:'pointer',fontFamily:"'DM Sans',sans-serif",padding:'2px 6px'}}>
-                  {copied===m.text ? '✓ Copied' : 'Copy'}
+              <div style={{display:'flex',gap:2,marginTop:4,paddingLeft:2}}>
+                <button onClick={()=>copyMsg(m.text)} title={copied===m.text?'Copied!':'Copy'} style={{width:32,height:32,borderRadius:8,background:copied===m.text?'rgba(197,241,53,.12)':'transparent',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:copied===m.text?G:'#666',fontSize:15,transition:'.15s'}}>
+                  {copied===m.text ? '✓' : '⎘'}
                 </button>
-                <button onClick={()=>shareMsg(m.text)} style={{fontSize:11,color:'#555',background:'none',border:'none',cursor:'pointer',fontFamily:"'DM Sans',sans-serif",padding:'2px 6px'}}>
-                  Share
+                <button onClick={()=>shareMsg(m.text)} title="Share" style={{width:32,height:32,borderRadius:8,background:'transparent',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:'#666',fontSize:15}}>
+                  ↗
                 </button>
-                {m.text.length > 500 && (
-                  <button onClick={()=>downloadMsg(m.text)} style={{fontSize:11,color:'#555',background:'none',border:'none',cursor:'pointer',fontFamily:"'DM Sans',sans-serif",padding:'2px 6px'}}>
-                    Download
+                {m.text.length > 300 && (
+                  <button onClick={()=>downloadMsg(m.text)} title="Download" style={{width:32,height:32,borderRadius:8,background:'transparent',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:'#666',fontSize:15}}>
+                    ↓
                   </button>
                 )}
               </div>
