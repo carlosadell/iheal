@@ -135,3 +135,8 @@ export async function insertReport(report) {
   if (error) { console.error('insertReport:', error); return null }
   return data?.[0]
 }
+
+export async function deleteReport(id) {
+  const { error } = await supabase.from('reports').delete().eq('id', id)
+  if (error) console.error('deleteReport:', error)
+}
