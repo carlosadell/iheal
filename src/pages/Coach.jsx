@@ -278,7 +278,7 @@ export default function Coach() {
 
       {/* Input bar */}
       <div style={{padding:'10px 16px 14px',display:'flex',gap:8,alignItems:'flex-end',borderTop:`1px solid ${BORDER}`,background:'#000',flexShrink:0}}>
-        <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={handleFileSelect} style={{display:'none'}}/>
+        <input ref={fileRef} type="file" accept="image/*" onChange={handleFileSelect} style={{display:'none'}}/>
 
         {/* Camera/photo button */}
         <button onClick={()=>fileRef.current?.click()} style={{

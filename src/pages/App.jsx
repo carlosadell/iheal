@@ -15,12 +15,14 @@ const NAV = [
   { id: 'reports',  label: 'Reports',  icon: '◎' },
 ]
 
+// ─── Protocol and supplement item definitions (no done state here) ───────────
+
 const PROTOCOL_ITEMS = [
-  {key:'epi',    icon:'🧬', name:'Epitalon',                sub:'2mg subQ · before bed',             time:'~21:00', group:'peptide'},
-  {key:'tra',    icon:'💊', name:'Trazodone (Триттико)',     sub:'50mg wk1 · 100mg wk2 · 150mg wk3', time:'21:00',  group:'med'},
-  {key:'eti_am', icon:'💊', name:'Etifoxine — Morning',     sub:'50mg',                              time:'09:00',  group:'med'},
-  {key:'eti_md', icon:'💊', name:'Etifoxine — Midday',      sub:'50mg',                              time:'14:00',  group:'med'},
-  {key:'eti_ev', icon:'💊', name:'Etifoxine — Evening',     sub:'50mg',                              time:'17:00',  group:'med'},
+  {key:'epi',    icon:'🧬', name:'Epitalon',               sub:'2mg subQ · before bed',             time:'~21:00', group:'peptide'},
+  {key:'tra',    icon:'💊', name:'Trazodone (Триттико)',    sub:'50mg wk1 · 100mg wk2 · 150mg wk3', time:'21:00',  group:'med'},
+  {key:'eti_am', icon:'💊', name:'Etifoxine — Morning',    sub:'50mg',                              time:'09:00',  group:'med'},
+  {key:'eti_md', icon:'💊', name:'Etifoxine — Midday',     sub:'50mg',                              time:'14:00',  group:'med'},
+  {key:'eti_ev', icon:'💊', name:'Etifoxine — Evening',    sub:'50mg',                              time:'17:00',  group:'med'},
 ]
 
 const SUPPLEMENT_ITEMS = [
@@ -34,96 +36,97 @@ const SUPPLEMENT_ITEMS = [
 ]
 
 const PROTOCOL_START = new Date('2026-03-09')
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
 
-// Returns today's date as YYYY-MM-DD string
-function todayKey() {
+// ─── Date helpers — computed immediately, not in useEffect ────────────────────
+
+function getTodayKey() {
   const n = new Date()
   return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`
 }
 
-// Build protocol list including Retatrutide only on Mondays
-function buildProtocolItems() {
-  const isMonday = new Date().getDay() === 1
-  const items = [...PROTOCOL_ITEMS]
-  if (isMonday) {
-    items.unshift({key:'ret', icon:'💉', name:'Retatrutide', sub:'1mg subcutaneous · after food', time:'Monday', group:'peptide'})
-  }
-  return items
+function getTodayStr() {
+  const n = new Date()
+  return `Saint Petersburg · ${MONTHS[n.getMonth()]} ${n.getDate()}, ${n.getFullYear()}`
 }
 
-// Load today's check state from localStorage
-// Returns {protocol: {key: bool}, supplements: {key: bool}}
-function loadChecks() {
+function getDayNum() {
+  const diff = Math.floor((new Date() - PROTOCOL_START) / (1000*60*60*24)) + 1
+  return diff > 0 ? diff : 1
+}
+
+function getTime() {
+  const n = new Date()
+  return `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`
+}
+
+// ─── LocalStorage persistence for daily check state ──────────────────────────
+
+function loadSavedChecks() {
   try {
-    const stored = localStorage.getItem('iheal_checks')
-    if (!stored) return null
-    const parsed = JSON.parse(stored)
-    // If stored date is not today, ignore it (daily reset)
-    if (parsed.date !== todayKey()) return null
+    const raw = localStorage.getItem('iheal_checks')
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    // Discard if saved on a different day — automatic daily reset
+    if (parsed.date !== getTodayKey()) return null
     return parsed
   } catch {
     return null
   }
 }
 
-// Save current check state to localStorage with today's date
-function saveChecks(protocolState, supplementsState) {
+function persistChecks(protocolArr, supplementsArr) {
   try {
-    const checks = {
-      date: todayKey(),
-      protocol: Object.fromEntries(protocolState.map(p => [p.key, p.done])),
-      supplements: Object.fromEntries(supplementsState.map(s => [s.key, s.done])),
-    }
-    localStorage.setItem('iheal_checks', JSON.stringify(checks))
+    localStorage.setItem('iheal_checks', JSON.stringify({
+      date:        getTodayKey(),
+      protocol:    Object.fromEntries(protocolArr.map(p => [p.key, p.done])),
+      supplements: Object.fromEntries(supplementsArr.map(s => [s.key, s.done])),
+    }))
   } catch {}
 }
 
-// Build initial protocol state, restoring today's checks if available
-function buildProtocol() {
-  const items = buildProtocolItems()
-  const saved = loadChecks()
-  return items.map(p => ({
-    ...p,
-    done: saved?.protocol?.[p.key] ?? false,
-  }))
+// ─── Build initial state, restoring today's checks if they exist ─────────────
+
+function buildInitialProtocol() {
+  const isMonday = new Date().getDay() === 1
+  const saved    = loadSavedChecks()
+  const items    = [...PROTOCOL_ITEMS]
+  if (isMonday) {
+    items.unshift({key:'ret', icon:'💉', name:'Retatrutide', sub:'1mg subcutaneous · after food', time:'Monday', group:'peptide'})
+  }
+  return items.map(p => ({ ...p, done: saved?.protocol?.[p.key] ?? false }))
 }
 
-// Build initial supplements state, restoring today's checks if available
-function buildSupplements() {
-  const saved = loadChecks()
-  return SUPPLEMENT_ITEMS.map(s => ({
-    ...s,
-    done: saved?.supplements?.[s.key] ?? false,
-  }))
+function buildInitialSupplements() {
+  const saved = loadSavedChecks()
+  return SUPPLEMENT_ITEMS.map(s => ({ ...s, done: saved?.supplements?.[s.key] ?? false }))
 }
+
+// ─── App ──────────────────────────────────────────────────────────────────────
 
 export default function App() {
-  const [page, setPage]         = useState('home')
-  const [protocol, setProtocol] = useState(buildProtocol)
-  const [supplements, setSupps] = useState(buildSupplements)
-  const [macroTab, setMacroTab] = useState('kcal')
-  const [time, setTime]         = useState('')
-  const [todayStr, setTodayStr] = useState('')
-  const [dayNum, setDayNum]     = useState(1)
+  const [page,       setPage]    = useState('home')
+  const [protocol,   setProtocol] = useState(buildInitialProtocol)
+  const [supplements, setSupps]  = useState(buildInitialSupplements)
+  const [macroTab,   setMacroTab] = useState('kcal')
+  // Initialise date/time immediately so there is no flash of wrong values
+  const [time,    setTime]    = useState(getTime)
+  const [todayStr,setTodayStr] = useState(getTodayStr)
+  const [dayNum,  setDayNum]  = useState(getDayNum)
 
-  // Clock and date ticker
+  // Tick every 10 seconds to keep time/date fresh
   useEffect(() => {
-    const tick = () => {
-      const n = new Date()
-      setTime(`${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`)
-      const months = ['January','February','March','April','May','June','July','August','September','October','November','December']
-      setTodayStr(`Saint Petersburg · ${months[n.getMonth()]} ${n.getDate()}, ${n.getFullYear()}`)
-      const diff = Math.floor((n - PROTOCOL_START) / (1000*60*60*24)) + 1
-      setDayNum(diff > 0 ? diff : 1)
-    }
-    tick()
-    const id = setInterval(tick, 10000)
+    const id = setInterval(() => {
+      setTime(getTime())
+      setTodayStr(getTodayStr())
+      setDayNum(getDayNum())
+    }, 10000)
     return () => clearInterval(id)
   }, [])
 
-  // Persist checks to localStorage whenever protocol or supplements change
+  // Persist checks to localStorage whenever the user taps a checkbox
   useEffect(() => {
-    saveChecks(protocol, supplements)
+    persistChecks(protocol, supplements)
   }, [protocol, supplements])
 
   const togProto = (key) => setProtocol(p => p.map(i => i.key===key ? {...i, done:!i.done} : i))
@@ -146,7 +149,6 @@ export default function App() {
 
   return (
     <div style={{position:'fixed',inset:0,display:'flex',flexDirection:'column',maxWidth:430,margin:'0 auto',background:BG,color:T,fontFamily:"'DM Sans',sans-serif"}}>
-      {/* TOPBAR */}
       <div style={{height:54,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 16px',borderBottom:`1px solid ${BORDER}`,background:BG,flexShrink:0,zIndex:20}}>
         <div style={{display:'flex',alignItems:'center',gap:8}}>
           <div style={{width:30,height:30,background:G,borderRadius:8,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:16,color:'#000'}}>iH</div>
@@ -155,7 +157,6 @@ export default function App() {
         <div style={{fontSize:13,color:'#b0b4c0',fontWeight:500}}>Carlos</div>
       </div>
 
-      {/* CONTENT */}
       <div style={{flex:1,overflowY:'auto',overflowX:'hidden',WebkitOverflowScrolling:'touch',minHeight:0}}>
         {page==='home'     && <Home     {...shared}/>}
         {page==='protocol' && <Protocol {...shared}/>}
@@ -165,7 +166,6 @@ export default function App() {
         {page==='settings' && <Settings {...shared} setPage={setPage}/>}
       </div>
 
-      {/* BOTTOM NAV */}
       <div style={{display:'flex',background:BG,borderTop:`1px solid ${BORDER}`,flexShrink:0,zIndex:20,paddingBottom:'env(safe-area-inset-bottom)'}}>
         {NAV.map(n => (
           <div key={n.id} onClick={()=>setPage(n.id)} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'9px 4px 8px',cursor:'pointer',gap:3,color:page===n.id?G:T3,transition:'.15s'}}>
