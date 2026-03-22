@@ -54,19 +54,16 @@ function BarChart({data, maxVal, colorFn, labelFn, subLabelKey, highlightLast}) 
   )
 }
 
-export default function Home({sleepLogs, macroLogs, protocol, supplements, macroTab, setMacroTab, togProto, togSupp, setPage, profile, time, todayStr, dayNum}) {
+export default function Home({sleepLogs, protocol, supplements, togProto, togSupp, setPage, profile, time, todayStr, dayNum}) {
   const last = sleepLogs[sleepLogs.length-1] || {}
   const doneProt = protocol.filter(p=>p.done).length + supplements.filter(s=>s.done).length
   const totalProt = protocol.length + supplements.length
-  const isKcal = macroTab==='kcal'
-  const goal = isKcal ? profile.calorie_target : profile.protein_target_g
 
   const sleepChart = sleepLogs.map(s => ({v:s.deep_pct, d:parseInt(s.date.slice(8))+'M'}))
-  const macroChart = macroLogs.map(m => ({v:isKcal?m.kcal:m.protein_g, d:parseInt(m.date.slice(8))+'M'}))
 
   return (
     <div>
-      {/* HERO — dynamic date and day counter */}
+      {/* HERO */}
       <div style={{position:'relative',overflow:'hidden',background:'linear-gradient(160deg,#0d1200 0%,#000 55%)'}}>
         <div style={{position:'absolute',inset:0,background:'linear-gradient(to bottom,transparent 10%,#000 100%)'}}/>
         <div style={{position:'absolute',inset:0,background:'radial-gradient(ellipse at 70% 30%,rgba(197,241,53,.08) 0%,transparent 65%)'}}/>
@@ -81,17 +78,17 @@ export default function Home({sleepLogs, macroLogs, protocol, supplements, macro
       <div style={{margin:'10px 16px 0',background:'rgba(197,241,53,.05)',border:'1px solid rgba(197,241,53,.2)',borderRadius:14,padding:'11px 14px',display:'flex',gap:10,alignItems:'flex-start'}}>
         <div style={{width:7,height:7,borderRadius:'50%',background:G,flexShrink:0,marginTop:5}}/>
         <div style={{fontSize:13,lineHeight:1.5}}>
-          <span style={{color:G,fontWeight:600}}>Night 5 on Trazodone — score 72.</span> Deep sleep suppressed (late meal + later bedtime). Week 2 dose (100mg) starts March 24. Monitor avg sleep HR.
+          <span style={{color:G,fontWeight:600}}>Night 6 on Trazodone — score 75.</span> Deep sleep 27min / 7%. Week 2 dose (100mg) starts March 24. Monitor avg sleep HR vs baseline 58–62 bpm.
         </div>
       </div>
 
       {/* LAST NIGHT */}
       {sec('Last Night')}
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,padding:'0 16px'}}>
-        <MetricCard label="Deep Sleep" value={last.deep_min} unit="m" sub={`${last.deep_pct}% of total`} delta="Night 5" deltaType="ok"/>
+        <MetricCard label="Deep Sleep" value={last.deep_min} unit="m" sub={`${last.deep_pct}% of total`} delta="Night 6" deltaType="ok"/>
         <MetricCard label="Sleep Score" value={last.score} sub="Trazodone wk1" delta="GOOD" deltaType="great"/>
-        <MetricCard label="HRV Avg" value={last.hrv_ms} unit="ms" sub={`Max ${last.hrv_max_ms||26}ms`} delta="stable" deltaType="ok"/>
-        <MetricCard label="Resting HR" value={last.resting_hr} unit="bpm" sub="Avg 78 bpm" delta="watch trend" deltaType="warn"/>
+        <MetricCard label="HRV Avg" value={last.hrv_ms} unit="ms" sub={`Max ${last.hrv_max_ms||37}ms`} delta="stable" deltaType="ok"/>
+        <MetricCard label="Resting HR" value={last.resting_hr} unit="bpm" sub={`Baseline 58–62 bpm`} delta="watch trend" deltaType="warn"/>
       </div>
 
       {/* DEEP SLEEP TREND */}
@@ -106,31 +103,7 @@ export default function Home({sleepLogs, macroLogs, protocol, supplements, macro
         />
       </div>
 
-      {/* NUTRITION TREND */}
-      {sec('Nutrition Trend', `Target: ${isKcal?'1,950 kcal':'170g protein'}`)}
-      <div style={{display:'flex',gap:6,padding:'0 16px 8px'}}>
-        {['kcal','prot'].map(t=>(
-          <div key={t} onClick={()=>setMacroTab(t)} style={{padding:'5px 14px',borderRadius:20,fontSize:12,fontWeight:macroTab===t?700:500,cursor:'pointer',background:macroTab===t?G:CARD,border:`1px solid ${macroTab===t?G:BORDER}`,color:macroTab===t?'#000':T2}}>
-            {t==='kcal'?'Calories':'Protein'}
-          </div>
-        ))}
-      </div>
-      <div style={card}>
-        <BarChart
-          data={macroChart}
-          maxVal={isKcal?2800:230}
-          colorFn={(d)=>{
-            if(!d.v) return CARD3
-            const pct = Math.round((d.v/goal)*100)
-            return pct>=95?G:pct>=80?'#ffb400':'#ff5555'
-          }}
-          labelFn={(d)=>!d.v?'—':isKcal?String(d.v):d.v+'g'}
-          subLabelKey="d"
-          highlightLast
-        />
-      </div>
-
-      {/* TODAY'S PROTOCOL — tap through only */}
+      {/* TODAY'S PROTOCOL */}
       {sec("Today's Protocol", `${doneProt}/${totalProt} done`)}
       <div style={{...card,cursor:'pointer'}} onClick={()=>setPage('protocol')}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'14px 16px'}}>
