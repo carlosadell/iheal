@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { fetchCoachMessages, insertCoachMessage, insertReport } from '../lib/supabase'
+import { fetchCoachMessages, insertCoachMessage, insertReport, insertSleepLog, insertBpLog, insertBodyComposition, upsertLabResult } from '../lib/supabase'
 
 const GREEN  = '#c5f135'
 const CARD   = '#1e2128'
@@ -32,23 +32,67 @@ Resting HR during sleep: 58–62 bpm. HRV range: 24–34ms. Deep sleep ranged 6�
 
 COMPLETE SLEEP LOG (Trazodone nights):
 - Night 1 (Mar 17): deep 14min / 3%, resting HR 66 bpm, HRV 28ms
-- Night 2 (Mar 18): deep 9min / 2%, sleep score 75, resting HR 69 bpm, HRV 22ms. Subjective: quieter mind, fewer anxious thoughts.
-- Night 3 (Mar 19): deep 41min / 11%, sleep score 74, resting HR 66 bpm, HRV 22ms, latency 7min. Woke rested at 5am.
-- Night 4 (Mar 20): deep 40min / 10%, sleep score 81, total 6h45m, REM 1h40m (25%), resting HR 68 bpm (avg 76), HRV avg 21ms max 40ms, efficiency 91%.
-- Night 5 (Mar 21): deep 9min / 2%, sleep score 75, total 6h3m, REM 1h23m (23%), resting HR 71 bpm (avg 78), HRV avg 16ms max 26ms, latency 16min. Late bedtime + heavy high-fat meal that night.
-- Night 6 (Mar 22): deep 27min / 7%, sleep score 75, resting HR 68 bpm, HRV avg 25ms max 37ms. Oura readiness 65, activity 89.
+- Night 2 (Mar 18): deep 9min / 2%, sleep score 75, resting HR 69 bpm, HRV 22ms
+- Night 3 (Mar 19): deep 41min / 11%, sleep score 74, resting HR 66 bpm, HRV 22ms
+- Night 4 (Mar 20): deep 40min / 10%, sleep score 81, resting HR 68 bpm, HRV avg 21ms max 40ms
+- Night 5 (Mar 21): deep 9min / 2%, sleep score 75, resting HR 71 bpm, HRV avg 16ms max 26ms
+- Night 6 (Mar 22): deep 27min / 7%, sleep score 75, resting HR 68 bpm, HRV avg 25ms max 37ms
 
-RESTING HR CONTEXT: Carlos's pre-medication baseline is 58–62 bpm during sleep. Current readings at 68–71 bpm are elevated above his personal baseline. Primary driver is likely Retatrutide glucagon chronotropy. Monitor trend. If daytime HR consistently above 80 bpm, discuss bisoprolol 2.5mg with Dr. Anton at April 5 appointment.
+RESTING HR CONTEXT: Baseline 58–62 bpm. Current 68–71 bpm elevated. Primary driver: Retatrutide glucagon chronotropy.
 
-BLOOD PRESSURE (Mar 21 morning): 118/75 mmHg, pulse 70 bpm — WHO optimal.
+BLOOD PRESSURE (Mar 21): 118/75 mmHg, pulse 70 bpm.
 
-BODY COMPOSITION (Mar 16, standard mode): weight 78.7kg, body fat 26%, muscle mass 55.3kg, visceral fat 8. Goal: sub-20% BF, 75–76kg target weight.
+BODY COMPOSITION (Mar 16): weight 78.7kg, body fat 26%, muscle 55.3kg, visceral fat 8. Goal: sub-20% BF, 75–76kg.
 
-LABS: ApoB 82 mg/dL (good), fasting insulin 4.2 µIU/mL (good), homocysteine 11.2 µmol/L (elevated — methylated B-complex is addressing this), GGT 22 U/L (good), Vitamin D3 114.7 ng/mL (supraphysiologic — K2 2 caps daily is protective). Pending: CRP, HbA1c, transferrin saturation.
+LABS: ApoB 82, fasting insulin 4.2, homocysteine 11.2 (elevated), GGT 22, Vitamin D3 114.7 (high). Pending: CRP, HbA1c, transferrin saturation.
 
-PSYCHIATRIST: Dr. Anton, Домой Линник SPB, F40.2 diagnosis. Next appointment approximately April 5, 2026. Contact via Telegram.
+PSYCHIATRIST: Dr. Anton, Домой Линник SPB, F40.2. Next appointment ~April 5, 2026.
 
-INTELLECTUAL FRAMEWORK: Mechanism-first. LDL alone does not equal CVD. Inflammation and insulin resistance are root causes. Priority biomarkers: ApoB, oxidized LDL, CRP, homocysteine, fasting insulin, HRV, deep sleep %. Medication is last-line not first-line. Individual physiology overrides population epidemiology.`
+INTELLECTUAL FRAMEWORK: Mechanism-first. Priority biomarkers: ApoB, oxidized LDL, CRP, homocysteine, fasting insulin, HRV, deep sleep %.`
+
+// Extraction prompt — sent after every AI response to detect and extract health data
+const EXTRACTION_PROMPT = `You are a health data extractor. Analyze the conversation and extract any NEW health data that was just shared by the user (in their most recent message or photo).
+
+Return ONLY a JSON object. No explanation, no markdown, no code fences. Just raw JSON.
+
+If no new health data was shared, return: {"none": true}
+
+Otherwise return any combination of these fields that have new data:
+
+{
+  "sleep": {
+    "date": "YYYY-MM-DD",
+    "deep_min": number,
+    "deep_pct": number,
+    "score": number,
+    "resting_hr": number,
+    "hrv_ms": number,
+    "hrv_max_ms": number,
+    "total_min": number,
+    "rem_min": number,
+    "rem_pct": number,
+    "efficiency_pct": number,
+    "latency_min": number
+  },
+  "bp": {
+    "date": "YYYY-MM-DD",
+    "systolic": number,
+    "diastolic": number,
+    "pulse": number
+  },
+  "body": {
+    "date": "YYYY-MM-DD",
+    "weight_kg": number,
+    "body_fat_pct": number,
+    "muscle_mass_kg": number,
+    "visceral_fat": number
+  },
+  "labs": [
+    {"name": "string", "value": "string", "unit": "string", "status": "ok|warn|high|low"}
+  ]
+}
+
+Only include fields where you have actual data from the conversation. Do not include fields you are guessing or inferring. Use today's date if no date is specified.`
 
 function renderText(text) {
   const lines = text.split('\n')
@@ -98,7 +142,73 @@ function fileToBase64(file) {
   })
 }
 
-// Icon components
+async function extractAndSave(conversationMessages, attachedImages) {
+  try {
+    // Build messages for extraction — include the last user message with images if any
+    const lastUserMsg = conversationMessages[conversationMessages.length - 1]
+    const extractMessages = []
+
+    // Include last few messages for context
+    const recentMsgs = conversationMessages.slice(-4)
+    for (let i = 0; i < recentMsgs.length; i++) {
+      const m = recentMsgs[i]
+      const isLast = i === recentMsgs.length - 1
+      if (isLast && m.role === 'user' && attachedImages?.length > 0) {
+        const parts = attachedImages.map(img => ({
+          type: 'image',
+          source: { type: 'base64', media_type: img.mediaType, data: img.base64 }
+        }))
+        parts.push({ type: 'text', text: m.text || 'See attached images' })
+        extractMessages.push({ role: 'user', content: parts })
+      } else {
+        extractMessages.push({ role: m.role === 'ai' ? 'assistant' : 'user', content: m.text })
+      }
+    }
+
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 500,
+        system: EXTRACTION_PROMPT,
+        messages: extractMessages,
+      }),
+    })
+    const data = await res.json()
+    const raw = data.content?.[0]?.text?.trim()
+    if (!raw) return null
+
+    const parsed = JSON.parse(raw)
+    if (parsed.none) return null
+
+    const saved = []
+
+    if (parsed.sleep && parsed.sleep.date) {
+      await insertSleepLog(parsed.sleep)
+      saved.push('sleep data')
+    }
+    if (parsed.bp && parsed.bp.date) {
+      await insertBpLog(parsed.bp)
+      saved.push('blood pressure')
+    }
+    if (parsed.body && parsed.body.date) {
+      await insertBodyComposition(parsed.body)
+      saved.push('body composition')
+    }
+    if (parsed.labs && parsed.labs.length > 0) {
+      for (const lab of parsed.labs) {
+        await upsertLabResult(lab)
+      }
+      saved.push('lab results')
+    }
+
+    return saved.length > 0 ? saved : null
+  } catch {
+    return null
+  }
+}
+
 const IconCopy = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
@@ -111,22 +221,23 @@ const IconShare = () => (
 )
 const IconReport = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
   </svg>
 )
 
 export default function Coach() {
-  const [msgs, setMsgs]             = useState([INITIAL_MSG])
-  const [input, setInput]           = useState('')
-  const [thinking, setThinking]     = useState(false)
-  const [loading, setLoading]       = useState(true)
-  const [images, setImages]         = useState([])
-  const [lastFailed, setLastFailed] = useState(null)
-  const [savedMsgId, setSavedMsgId] = useState(null) // tracks which msg was just saved
+  const [msgs, setMsgs]               = useState([INITIAL_MSG])
+  const [input, setInput]             = useState('')
+  const [thinking, setThinking]       = useState(false)
+  const [loading, setLoading]         = useState(true)
+  const [images, setImages]           = useState([])
+  const [lastFailed, setLastFailed]   = useState(null)
+  const [savedMsgId, setSavedMsgId]   = useState(null)
   const [copiedMsgId, setCopiedMsgId] = useState(null)
-  const bottomRef                   = useRef(null)
-  const inputRef                    = useRef(null)
-  const fileRef                     = useRef(null)
+  const [savedData, setSavedData]     = useState(null) // {idx, labels}
+  const bottomRef                     = useRef(null)
+  const inputRef                      = useRef(null)
+  const fileRef                       = useRef(null)
 
   useEffect(() => {
     fetchCoachMessages().then(rows => {
@@ -175,6 +286,7 @@ export default function Coach() {
         }
         return { role: m.role === 'ai' ? 'assistant' : 'user', content: m.text }
       })
+
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -188,8 +300,18 @@ export default function Coach() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'API error')
       const aiText = data.content?.[0]?.text || 'Error — try again.'
+      const newMsgIdx = msgHistory.length // index of the AI response about to be added
+
       setMsgs(prev => [...prev, { role: 'ai', text: aiText }])
       await insertCoachMessage('ai', aiText)
+
+      // Run data extraction in background — don't await, don't block UI
+      extractAndSave(msgHistory, attachedImages).then(saved => {
+        if (saved) {
+          setSavedData({ idx: newMsgIdx, labels: saved })
+          setTimeout(() => setSavedData(null), 4000)
+        }
+      })
     } catch {
       setMsgs(prev => [...prev, { role: 'ai', text: 'CONNECTION_ERROR', isError: true }])
       setLastFailed({ msgHistory, attachedImages })
@@ -234,7 +356,6 @@ export default function Coach() {
 
   const saveAsReport = async (text, idx) => {
     const date = new Date().toISOString().slice(0, 10)
-    const title = `AI Coach — ${new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' })}`
     await insertReport({
       date,
       recipient: 'AI Coach',
@@ -269,6 +390,14 @@ export default function Coach() {
                 m.role === 'ai' ? renderText(m.text) : m.text
               )}
             </div>
+
+            {/* Data saved confirmation — shows briefly after extraction */}
+            {m.role === 'ai' && savedData?.idx === i && (
+              <div style={s.savedBadge}>
+                ✓ {savedData.labels.join(' + ')} saved to your records
+              </div>
+            )}
+
             {m.role === 'ai' && !m.isError && (
               <div style={s.msgActions}>
                 <button onClick={() => copyMsg(m.text, i)} style={s.actionBtn} title="Copy">
@@ -357,7 +486,8 @@ const s = {
   msgAi:      { background: CARD, border: `1px solid ${BORDER}`, borderBottomLeftRadius: 3, color: TEXT2 },
   msgUser:    { background: GREEN, borderBottomRightRadius: 3, color: '#000', fontWeight: 500 },
   msgActions: { display: 'flex', gap: 6, marginTop: 5, paddingLeft: 2 },
-  actionBtn:  { display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#6a7080', fontSize: 11, fontFamily: "'DM Sans', sans-serif", cursor: 'pointer', padding: '4px 9px', borderRadius: 7, transition: 'color 0.15s' },
+  actionBtn:  { display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#6a7080', fontSize: 11, fontFamily: "'DM Sans', sans-serif", cursor: 'pointer', padding: '4px 9px', borderRadius: 7 },
+  savedBadge: { fontSize: 11, color: GREEN, fontStyle: 'italic', paddingLeft: 4, marginTop: 4, marginBottom: 2 },
   retryBtn:   { background: 'rgba(197,241,53,0.1)', border: '1px solid rgba(197,241,53,0.3)', color: GREEN, fontSize: 12, fontWeight: 600, padding: '6px 14px', borderRadius: 8, cursor: 'pointer' },
   imageStrip: { display: 'flex', gap: 8, padding: '8px 16px', overflowX: 'auto', borderTop: `1px solid ${BORDER}` },
   imageThumb: { position: 'relative', width: 56, height: 56, flexShrink: 0, borderRadius: 8, overflow: 'hidden', border: `1px solid ${BORDER}` },
