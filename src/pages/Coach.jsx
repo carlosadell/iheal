@@ -1,9 +1,12 @@
 import { useState, useRef, useEffect } from 'react'
+import { fetchCoachMessages, insertCoachMessage, clearCoachMessages } from '../lib/supabase'
 
 const GREEN  = '#c5f135'
 const CARD   = '#1e2128'
 const BORDER = '#2a2e38'
 const TEXT2  = '#b0b4c0'
+
+const INITIAL_MSG = { role: 'ai', text: "I'm your iHeal AI Coach. I have your full health context loaded. Share Oura screenshots, RENPHO scans, lab results, or ask anything." }
 
 const SYSTEM = `You are Carlos's personal AI health coach inside iHeal. Carlos is Spanish, 45 years old, entrepreneur, based in Saint Petersburg, Russia.
 
@@ -31,7 +34,7 @@ COMPLETE SLEEP LOG (Trazodone nights):
 - Night 1 (Mar 17): deep 14min / 3%, resting HR 66 bpm, HRV 28ms
 - Night 2 (Mar 18): deep 9min / 2%, sleep score 75, resting HR 69 bpm, HRV 22ms. Subjective: quieter mind, fewer anxious thoughts.
 - Night 3 (Mar 19): deep 41min / 11%, sleep score 74, resting HR 66 bpm, HRV 22ms, latency 7min. Woke rested at 5am.
-- Night 4 (Mar 20): deep 40min / 10%, sleep score 81, total 6h45m, REM 1h40m (25%), resting HR 68 bpm (avg 76), HRV avg 21ms max 40ms, efficiency 91%. 
+- Night 4 (Mar 20): deep 40min / 10%, sleep score 81, total 6h45m, REM 1h40m (25%), resting HR 68 bpm (avg 76), HRV avg 21ms max 40ms, efficiency 91%.
 - Night 5 (Mar 21): deep 9min / 2%, sleep score 75, total 6h3m, REM 1h23m (23%), resting HR 71 bpm (avg 78), HRV avg 16ms max 26ms, latency 16min. Late bedtime + heavy high-fat meal that night.
 - Night 6 (Mar 22): deep 27min / 7%, sleep score 75, resting HR 68 bpm, HRV avg 25ms max 37ms. Oura readiness 65, activity 89.
 
@@ -96,16 +99,24 @@ function fileToBase64(file) {
 }
 
 export default function Coach() {
-  const [msgs, setMsgs]         = useState([
-    { role: 'ai', text: "I'm your iHeal AI Coach. I have your full health context loaded. Share Oura screenshots, RENPHO scans, lab results, or ask anything." }
-  ])
-  const [input, setInput]       = useState('')
-  const [thinking, setThinking] = useState(false)
-  const [images, setImages]     = useState([]) // array of {base64, mediaType, name}
-  const [lastFailed, setLastFailed] = useState(null) // store last payload for retry
-  const bottomRef               = useRef(null)
-  const inputRef                = useRef(null)
-  const fileRef                 = useRef(null)
+  const [msgs, setMsgs]             = useState([INITIAL_MSG])
+  const [input, setInput]           = useState('')
+  const [thinking, setThinking]     = useState(false)
+  const [loading, setLoading]       = useState(true)
+  const [images, setImages]         = useState([])
+  const [lastFailed, setLastFailed] = useState(null)
+  const bottomRef                   = useRef(null)
+  const inputRef                    = useRef(null)
+  const fileRef                     = useRef(null)
+
+  useEffect(() => {
+    fetchCoachMessages().then(rows => {
+      if (rows.length > 0) {
+        setMsgs(rows.map(r => ({ role: r.role, text: r.text })))
+      }
+      setLoading(false)
+    })
+  }, [])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -135,12 +146,11 @@ export default function Coach() {
     return parts
   }
 
-  const sendPayload = async (msgHistory, userDisplayText, attachedImages) => {
+  const sendPayload = async (msgHistory, attachedImages) => {
     setThinking(true)
     setLastFailed(null)
     try {
       const apiMessages = msgHistory.map((m, i) => {
-        // Last user message gets images attached
         if (i === msgHistory.length - 1 && m.role === 'user' && attachedImages?.length > 0) {
           return { role: 'user', content: buildContent(m.text, attachedImages) }
         }
@@ -159,39 +169,50 @@ export default function Coach() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'API error')
-      setMsgs(prev => [...prev, { role: 'ai', text: data.content?.[0]?.text || 'Error — try again.' }])
+      const aiText = data.content?.[0]?.text || 'Error — try again.'
+      setMsgs(prev => [...prev, { role: 'ai', text: aiText }])
+      await insertCoachMessage('ai', aiText)
     } catch {
       setMsgs(prev => [...prev, { role: 'ai', text: 'CONNECTION_ERROR', isError: true }])
-      setLastFailed({ msgHistory, userDisplayText, attachedImages })
+      setLastFailed({ msgHistory, attachedImages })
     }
     setThinking(false)
   }
 
   const send = async (retryPayload) => {
     if (retryPayload) {
-      // Remove last error message and retry
       setMsgs(prev => prev.filter(m => !m.isError))
-      await sendPayload(retryPayload.msgHistory, retryPayload.userDisplayText, retryPayload.attachedImages)
+      await sendPayload(retryPayload.msgHistory, retryPayload.attachedImages)
       return
     }
-
     const text = input.trim()
     if ((!text && images.length === 0) || thinking) return
-
     const attachedImages = [...images]
     setInput('')
     setImages([])
     if (inputRef.current) inputRef.current.style.height = 'auto'
-
-    const displayText = text || (attachedImages.length > 0 ? `[${attachedImages.length} photo${attachedImages.length > 1 ? 's' : ''}]` : '')
+    const displayText = text || `[${attachedImages.length} photo${attachedImages.length > 1 ? 's' : ''}]`
     const newMsgs = [...msgs, { role: 'user', text: displayText }]
     setMsgs(newMsgs)
+    await insertCoachMessage('user', displayText)
+    await sendPayload(newMsgs, attachedImages)
+  }
 
-    await sendPayload(newMsgs, displayText, attachedImages)
+  const handleClearHistory = async () => {
+    await clearCoachMessages()
+    setMsgs([INITIAL_MSG])
   }
 
   const copyMsg = (text) => {
     navigator.clipboard.writeText(text).catch(() => {})
+  }
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', background: '#000' }}>
+        <span style={{ color: TEXT2, fontSize: 13 }}>Loading conversation...</span>
+      </div>
+    )
   }
 
   return (
@@ -203,10 +224,7 @@ export default function Coach() {
               {m.isError ? (
                 <div>
                   <div style={{ marginBottom: 8, color: TEXT2 }}>Connection error. Try again.</div>
-                  <button
-                    onClick={() => send(lastFailed)}
-                    style={s.retryBtn}
-                  >↺ Retry</button>
+                  <button onClick={() => send(lastFailed)} style={s.retryBtn}>↺ Retry</button>
                 </div>
               ) : (
                 m.role === 'ai' ? renderText(m.text) : m.text
@@ -229,7 +247,6 @@ export default function Coach() {
         <div ref={bottomRef} />
       </div>
 
-      {/* Image preview strip */}
       {images.length > 0 && (
         <div style={s.imageStrip}>
           {images.map((img, i) => (
@@ -274,7 +291,10 @@ export default function Coach() {
           rows={1}
           style={s.input}
         />
-        <button onClick={() => send()} style={{ ...s.sendBtn, opacity: (input.trim() || images.length > 0) && !thinking ? 1 : 0.5 }}>↑</button>
+        <button
+          onClick={() => send()}
+          style={{ ...s.sendBtn, opacity: (input.trim() || images.length > 0) && !thinking ? 1 : 0.5 }}
+        >↑</button>
       </div>
     </div>
   )

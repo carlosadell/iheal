@@ -140,3 +140,28 @@ export async function deleteReport(id) {
   const { error } = await supabase.from('reports').delete().eq('id', id)
   if (error) console.error('deleteReport:', error)
 }
+
+// ── Coach messages ────────────────────────────────────────────────────────────
+export async function fetchCoachMessages() {
+  const { data, error } = await supabase
+    .from('coach_messages')
+    .select('*')
+    .order('created_at', { ascending: true })
+  if (error) { console.error('fetchCoachMessages:', error); return [] }
+  return data
+}
+
+export async function insertCoachMessage(role, text) {
+  const { error } = await supabase
+    .from('coach_messages')
+    .insert({ role, text })
+  if (error) console.error('insertCoachMessage:', error)
+}
+
+export async function clearCoachMessages() {
+  const { error } = await supabase
+    .from('coach_messages')
+    .delete()
+    .neq('id', '00000000-0000-0000-0000-000000000000')
+  if (error) console.error('clearCoachMessages:', error)
+}
