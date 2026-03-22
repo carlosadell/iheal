@@ -1,6 +1,3 @@
-import { useState } from 'react'
-import { insertBpLog } from '../lib/supabase'
-
 const G='#c5f135', CARD='#1e2128', CARD3='#2e3240', BORDER='#2a2e38'
 const T='#fff', T2='#b0b4c0', T3='#6a6e7a', FD="'Bebas Neue',sans-serif"
 const card = {background:CARD,borderRadius:14,border:`1px solid ${BORDER}`,overflow:'hidden',margin:'0 16px'}
@@ -26,36 +23,9 @@ function MetricCard({label,value,unit,sub,delta,deltaType}) {
   )
 }
 
-function bpStatus(sys, dia) {
-  if (sys < 120 && dia < 80) return { label:'Optimal', color:G }
-  if (sys < 130 && dia < 80) return { label:'Normal', color:'#66bb6a' }
-  if (sys < 140 || dia < 90) return { label:'Elevated', color:'#ffb400' }
-  return { label:'High', color:'#ff5555' }
-}
-
-export default function Profile({bodyComp, labResults, nextLabs, profile, bpLogs, refreshBp, setPage}) {
-  const latest    = bodyComp[bodyComp.length-1] || {}
+export default function Profile({bodyComp, labResults, nextLabs, profile, setPage}) {
+  const latest     = bodyComp[bodyComp.length-1] || {}
   const latestDate = latest?.date?.slice(0,10)
-  const latestBp  = bpLogs?.[0] || null
-
-  const [showBpForm, setShowBpForm] = useState(false)
-  const [sys,  setSys]  = useState('')
-  const [dia,  setDia]  = useState('')
-  const [puls, setPuls] = useState('')
-  const [saving, setSaving] = useState(false)
-
-  const saveBp = async () => {
-    if (!sys || !dia || !puls) return
-    setSaving(true)
-    const today = new Date().toISOString().slice(0,10)
-    const hours = new Date().getHours()
-    const tod = hours < 12 ? 'morning' : hours < 17 ? 'afternoon' : 'evening'
-    await insertBpLog({ date: today, time_of_day: tod, systolic: Number(sys), diastolic: Number(dia), pulse: Number(puls) })
-    await refreshBp()
-    setSys(''); setDia(''); setPuls('')
-    setShowBpForm(false)
-    setSaving(false)
-  }
 
   return (
     <div>
@@ -78,88 +48,6 @@ export default function Profile({bodyComp, labResults, nextLabs, profile, bpLogs
         <MetricCard label="Muscle Mass"  value={latest?.muscle_mass_kg} unit="kg" delta="stable"           deltaType="ok"/>
         <MetricCard label="Visceral Fat" value={latest?.visceral_fat}   sub="Target: <5" delta="↓ improving" deltaType="warn"/>
       </div>
-
-      {/* Blood Pressure */}
-      {sec('Blood Pressure', latestBp ? latestBp.date : null)}
-      {latestBp && (
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8,padding:'0 16px',marginBottom:8}}>
-          {[
-            {label:'Systolic',  value:latestBp.systolic,  unit:'mmHg'},
-            {label:'Diastolic', value:latestBp.diastolic, unit:'mmHg'},
-            {label:'Pulse',     value:latestBp.pulse,     unit:'bpm'},
-          ].map(m => (
-            <div key={m.label} style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:14,padding:'12px 10px 10px'}}>
-              <div style={{fontSize:9,fontWeight:600,color:T2,textTransform:'uppercase',letterSpacing:1.5,marginBottom:4}}>{m.label}</div>
-              <div style={{fontFamily:FD,fontSize:26,color:G,lineHeight:1}}>{m.value}<span style={{fontSize:11,color:T2}}> {m.unit}</span></div>
-            </div>
-          ))}
-        </div>
-      )}
-      {latestBp && (() => {
-        const st = bpStatus(latestBp.systolic, latestBp.diastolic)
-        return (
-          <div style={{margin:'0 16px 8px',padding:'10px 14px',background:CARD,border:`1px solid ${BORDER}`,borderRadius:12,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-            <span style={{fontSize:13,color:T2}}>{latestBp.time_of_day} · {latestBp.notes || 'WHO classification'}</span>
-            <span style={{fontSize:12,fontWeight:700,color:st.color}}>{st.label}</span>
-          </div>
-        )
-      })()}
-
-      {/* BP log button */}
-      <div style={{padding:'0 16px 4px'}}>
-        {!showBpForm ? (
-          <button onClick={()=>setShowBpForm(true)} style={{width:'100%',padding:'12px',borderRadius:12,background:CARD,border:`1px solid ${BORDER}`,color:G,fontFamily:FD,fontSize:14,letterSpacing:1,cursor:'pointer',textTransform:'uppercase'}}>
-            + Log Blood Pressure
-          </button>
-        ) : (
-          <div style={{background:CARD,border:`1px solid ${BORDER}`,borderRadius:14,padding:'14px 16px'}}>
-            <div style={{fontSize:13,fontWeight:600,color:T,marginBottom:12}}>New Reading</div>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8,marginBottom:12}}>
-              {[
-                {label:'Systolic',  val:sys,  set:setSys,  ph:'118'},
-                {label:'Diastolic', val:dia,  set:setDia,  ph:'75'},
-                {label:'Pulse',     val:puls, set:setPuls, ph:'70'},
-              ].map(f => (
-                <div key={f.label}>
-                  <div style={{fontSize:10,color:T3,marginBottom:4}}>{f.label}</div>
-                  <input type="number" value={f.val} onChange={e=>f.set(e.target.value)} placeholder={f.ph}
-                    style={{width:'100%',background:'#2e3240',border:`1px solid ${BORDER}`,borderRadius:8,padding:'8px 10px',fontSize:16,color:T,fontFamily:"'DM Sans',sans-serif",outline:'none',boxSizing:'border-box'}}/>
-                </div>
-              ))}
-            </div>
-            <div style={{display:'flex',gap:8}}>
-              <button onClick={()=>setShowBpForm(false)} style={{flex:1,padding:'10px',borderRadius:10,background:'transparent',border:`1px solid ${BORDER}`,color:T2,fontFamily:"'DM Sans',sans-serif",fontSize:13,cursor:'pointer'}}>Cancel</button>
-              <button onClick={saveBp} disabled={saving} style={{flex:2,padding:'10px',borderRadius:10,background:G,border:'none',color:'#000',fontFamily:FD,fontSize:14,letterSpacing:1,cursor:'pointer',textTransform:'uppercase'}}>
-                {saving ? 'Saving...' : 'Save'}
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* BP history */}
-      {bpLogs?.length > 1 && (
-        <>
-          {sec('BP History')}
-          <div style={card}>
-            {bpLogs.slice(0,10).map((b,i) => {
-              const st = bpStatus(b.systolic, b.diastolic)
-              return (
-                <div key={b.id||i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'11px 16px',borderBottom:`1px solid ${BORDER}`}}>
-                  <div>
-                    <div style={{fontSize:13,color:T}}>{b.date} <span style={{color:T3,fontSize:11}}>· {b.time_of_day}</span></div>
-                    <div style={{fontSize:12,color:T3,marginTop:2}}>{b.pulse} bpm</div>
-                  </div>
-                  <div style={{textAlign:'right'}}>
-                    <div style={{fontSize:14,fontWeight:600,color:T}}>{b.systolic}/{b.diastolic}</div>
-                    <div style={{fontSize:11,color:st.color,fontWeight:600}}>{st.label}</div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </>
-      )}
 
       {/* Lab Results */}
       {sec('Lab Results')}
