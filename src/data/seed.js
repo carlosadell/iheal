@@ -64,10 +64,12 @@ export const recommendedNextLabs = [
   'Fasting glucose — metabolic baseline',
   'Testosterone total + free — DHEA metabolite check',
 ]
-
 export const seedNextLabs = recommendedNextLabs
+
 export const seedMacroLog = seedMacroLogs
+
 export const seedSleepLog = seedSleepLogs
+
 export const seedGoals = {
   calories: seedProfile.calorie_target,
   protein_g: seedProfile.protein_target_g,
@@ -77,6 +79,7 @@ export const seedGoals = {
   target_body_fat_pct: seedProfile.target_body_fat_pct,
   deep_sleep_target_pct: seedProfile.target_deep_sleep_pct,
 }
+
 export const seedDoctor = {
   name: 'Dr. Anton',
   specialty: 'Psychiatrist',
@@ -86,22 +89,3 @@ export const seedDoctor = {
   next_appointment: '~5 April 2026',
   diagnosis: 'F40.2',
 }
-
-export const seedProtocol = [
-  { key: 'ret',    icon: '💉', name: 'Retatrutide',               sub: '1mg subcutaneous · after food',          group: 'peptide', monday_only: true  },
-  { key: 'epi',    icon: '🧬', name: 'Epitalon',                  sub: '2mg subcutaneous · before bed',          group: 'peptide', monday_only: false },
-  { key: 'tra',    icon: '💊', name: 'Trazodone (Триттико)',       sub: '50mg → 100mg wk2 → 150mg wk3 · 21:00',  group: 'med',     monday_only: false },
-  { key: 'eti_am', icon: '💊', name: 'Etifoxine — Morning',       sub: '50mg · 09:00',                           group: 'med',     monday_only: false },
-  { key: 'eti_md', icon: '💊', name: 'Etifoxine — Midday',        sub: '50mg · 14:00',                           group: 'med',     monday_only: false },
-  { key: 'eti_ev', icon: '💊', name: 'Etifoxine — Evening',       sub: '50mg · 17:00',                           group: 'med',     monday_only: false },
-]
-
-export const seedSupplements = [
-  { key: 'vitc',   icon: '🍊', name: 'Vitamin C',                  sub: '900–1800mg · on waking'  },
-  { key: 'magcit', icon: '🌊', name: 'Magnesium Citrate 400mg',    sub: '1 capsule · morning'     },
-  { key: 'bcomp',  icon: '🅱️', name: 'B-Complex Methylated',       sub: '1 tablet · morning'      },
-  { key: 'k2',     icon: '🫙', name: 'Vitamin K2 MK-7',            sub: '2 capsules · daily'      },
-  { key: 'd3',     icon: '☀️', name: 'Vitamin D3 10,000 IU',       sub: '1 capsule · 4× per week' },
-  { key: 'dhea',   icon: '⚡', name: 'DHEA',                       sub: '100mg · daily'           },
-  { key: 'magbis', icon: '🌙', name: 'Magnesium Bisglycinate + B6',sub: 'As labelled · evening'   },
-]

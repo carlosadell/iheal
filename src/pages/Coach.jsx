@@ -40,8 +40,6 @@ COMPLETE SLEEP LOG (Trazodone nights):
 
 RESTING HR CONTEXT: Baseline 58–62 bpm. Current 68–71 bpm elevated. Primary driver: Retatrutide glucagon chronotropy.
 
-BLOOD PRESSURE (Mar 21): 118/75 mmHg, pulse 70 bpm.
-
 BODY COMPOSITION (Mar 16): weight 78.7kg, body fat 26%, muscle 55.3kg, visceral fat 8. Goal: sub-20% BF, 75–76kg.
 
 LABS: ApoB 82, fasting insulin 4.2, homocysteine 11.2 (elevated), GGT 22, Vitamin D3 114.7 (high). Pending: CRP, HbA1c, transferrin saturation.
@@ -50,49 +48,34 @@ PSYCHIATRIST: Dr. Anton, Домой Линник SPB, F40.2. Next appointment ~A
 
 INTELLECTUAL FRAMEWORK: Mechanism-first. Priority biomarkers: ApoB, oxidized LDL, CRP, homocysteine, fasting insulin, HRV, deep sleep %.`
 
-// Extraction prompt — sent after every AI response to detect and extract health data
-const EXTRACTION_PROMPT = `You are a health data extractor. Analyze the conversation and extract any NEW health data that was just shared by the user (in their most recent message or photo).
+const EXTRACTION_SYSTEM = `You are a health data extractor. Your job is to extract structured health data from a conversation.
 
-Return ONLY a JSON object. No explanation, no markdown, no code fences. Just raw JSON.
+CRITICAL: Respond with ONLY a raw JSON object. No markdown. No code fences. No explanation. No preamble. The very first character of your response must be { and the very last must be }.
 
-If no new health data was shared, return: {"none": true}
+If no new health data was shared by the user, respond with exactly: {"none":true}
 
-Otherwise return any combination of these fields that have new data:
+If health data was shared, extract it into this structure (only include fields that have actual data):
 
-{
-  "sleep": {
-    "date": "YYYY-MM-DD",
-    "deep_min": number,
-    "deep_pct": number,
-    "score": number,
-    "resting_hr": number,
-    "hrv_ms": number,
-    "hrv_max_ms": number,
-    "total_min": number,
-    "rem_min": number,
-    "rem_pct": number,
-    "efficiency_pct": number,
-    "latency_min": number
-  },
-  "bp": {
-    "date": "YYYY-MM-DD",
-    "systolic": number,
-    "diastolic": number,
-    "pulse": number
-  },
-  "body": {
-    "date": "YYYY-MM-DD",
-    "weight_kg": number,
-    "body_fat_pct": number,
-    "muscle_mass_kg": number,
-    "visceral_fat": number
-  },
-  "labs": [
-    {"name": "string", "value": "string", "unit": "string", "status": "ok|warn|high|low"}
-  ]
+{"sleep":{"date":"YYYY-MM-DD","deep_min":0,"deep_pct":0,"score":0,"resting_hr":0,"hrv_ms":0,"hrv_max_ms":0,"total_min":0,"rem_min":0,"rem_pct":0,"efficiency_pct":0,"latency_min":0},"bp":{"date":"YYYY-MM-DD","systolic":0,"diastolic":0,"pulse":0},"body":{"date":"YYYY-MM-DD","weight_kg":0,"body_fat_pct":0,"muscle_mass_kg":0,"visceral_fat":0},"labs":[{"name":"","value":"","unit":"","status":"ok"}]}
+
+Rules:
+- Only extract data the USER explicitly shared. Never infer or estimate.
+- Remove any fields where the value is 0 or unknown.
+- Use today's date (${new Date().toISOString().slice(0,10)}) if no date was mentioned.
+- For sleep: deep_pct is the percentage (e.g. 7 not 0.07).`
+
+function parseJSON(raw) {
+  if (!raw) return null
+  // Strip markdown code fences if present
+  let cleaned = raw.trim()
+  cleaned = cleaned.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim()
+  // Find first { and last }
+  const start = cleaned.indexOf('{')
+  const end = cleaned.lastIndexOf('}')
+  if (start === -1 || end === -1) return null
+  cleaned = cleaned.slice(start, end + 1)
+  return JSON.parse(cleaned)
 }
-
-Only include fields where you have actual data from the conversation. Do not include fields you are guessing or inferring. Use today's date if no date is specified.`
 
 function renderText(text) {
   const lines = text.split('\n')
@@ -144,14 +127,8 @@ function fileToBase64(file) {
 
 async function extractAndSave(conversationMessages, attachedImages) {
   try {
-    // Build messages for extraction — include the last user message with images if any
-    const lastUserMsg = conversationMessages[conversationMessages.length - 1]
-    const extractMessages = []
-
-    // Include last few messages for context
     const recentMsgs = conversationMessages.slice(-4)
-    for (let i = 0; i < recentMsgs.length; i++) {
-      const m = recentMsgs[i]
+    const extractMessages = recentMsgs.map((m, i) => {
       const isLast = i === recentMsgs.length - 1
       if (isLast && m.role === 'user' && attachedImages?.length > 0) {
         const parts = attachedImages.map(img => ({
@@ -159,11 +136,10 @@ async function extractAndSave(conversationMessages, attachedImages) {
           source: { type: 'base64', media_type: img.mediaType, data: img.base64 }
         }))
         parts.push({ type: 'text', text: m.text || 'See attached images' })
-        extractMessages.push({ role: 'user', content: parts })
-      } else {
-        extractMessages.push({ role: m.role === 'ai' ? 'assistant' : 'user', content: m.text })
+        return { role: 'user', content: parts }
       }
-    }
+      return { role: m.role === 'ai' ? 'assistant' : 'user', content: m.text }
+    })
 
     const res = await fetch('/api/chat', {
       method: 'POST',
@@ -171,40 +147,50 @@ async function extractAndSave(conversationMessages, attachedImages) {
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 500,
-        system: EXTRACTION_PROMPT,
+        system: EXTRACTION_SYSTEM,
         messages: extractMessages,
       }),
     })
-    const data = await res.json()
-    const raw = data.content?.[0]?.text?.trim()
-    if (!raw) return null
 
-    const parsed = JSON.parse(raw)
-    if (parsed.none) return null
+    const data = await res.json()
+    const raw = data.content?.[0]?.text
+    console.log('[iHeal extraction raw]', raw)
+
+    const parsed = parseJSON(raw)
+    console.log('[iHeal extraction parsed]', parsed)
+
+    if (!parsed || parsed.none) return null
 
     const saved = []
 
-    if (parsed.sleep && parsed.sleep.date) {
-      await insertSleepLog(parsed.sleep)
+    if (parsed.sleep?.date) {
+      // Remove zero/null fields before saving
+      const sleep = Object.fromEntries(Object.entries(parsed.sleep).filter(([, v]) => v !== 0 && v !== null))
+      console.log('[iHeal] saving sleep:', sleep)
+      await insertSleepLog(sleep)
       saved.push('sleep data')
     }
-    if (parsed.bp && parsed.bp.date) {
+    if (parsed.bp?.date && parsed.bp?.systolic) {
+      console.log('[iHeal] saving BP:', parsed.bp)
       await insertBpLog(parsed.bp)
       saved.push('blood pressure')
     }
-    if (parsed.body && parsed.body.date) {
+    if (parsed.body?.date && parsed.body?.weight_kg) {
+      console.log('[iHeal] saving body comp:', parsed.body)
       await insertBodyComposition(parsed.body)
       saved.push('body composition')
     }
-    if (parsed.labs && parsed.labs.length > 0) {
+    if (parsed.labs?.length > 0) {
       for (const lab of parsed.labs) {
+        console.log('[iHeal] saving lab:', lab)
         await upsertLabResult(lab)
       }
       saved.push('lab results')
     }
 
     return saved.length > 0 ? saved : null
-  } catch {
+  } catch (err) {
+    console.error('[iHeal extraction error]', err)
     return null
   }
 }
@@ -234,7 +220,7 @@ export default function Coach() {
   const [lastFailed, setLastFailed]   = useState(null)
   const [savedMsgId, setSavedMsgId]   = useState(null)
   const [copiedMsgId, setCopiedMsgId] = useState(null)
-  const [savedData, setSavedData]     = useState(null) // {idx, labels}
+  const [savedData, setSavedData]     = useState(null)
   const bottomRef                     = useRef(null)
   const inputRef                      = useRef(null)
   const fileRef                       = useRef(null)
@@ -300,12 +286,11 @@ export default function Coach() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'API error')
       const aiText = data.content?.[0]?.text || 'Error — try again.'
-      const newMsgIdx = msgHistory.length // index of the AI response about to be added
+      const newMsgIdx = msgHistory.length
 
       setMsgs(prev => [...prev, { role: 'ai', text: aiText }])
       await insertCoachMessage('ai', aiText)
 
-      // Run data extraction in background — don't await, don't block UI
       extractAndSave(msgHistory, attachedImages).then(saved => {
         if (saved) {
           setSavedData({ idx: newMsgIdx, labels: saved })
@@ -391,7 +376,6 @@ export default function Coach() {
               )}
             </div>
 
-            {/* Data saved confirmation — shows briefly after extraction */}
             {m.role === 'ai' && savedData?.idx === i && (
               <div style={s.savedBadge}>
                 ✓ {savedData.labels.join(' + ')} saved to your records
@@ -400,15 +384,15 @@ export default function Coach() {
 
             {m.role === 'ai' && !m.isError && (
               <div style={s.msgActions}>
-                <button onClick={() => copyMsg(m.text, i)} style={s.actionBtn} title="Copy">
+                <button onClick={() => copyMsg(m.text, i)} style={s.actionBtn}>
                   <IconCopy />
                   <span>{copiedMsgId === i ? 'Copied' : 'Copy'}</span>
                 </button>
-                <button onClick={() => shareMsg(m.text)} style={s.actionBtn} title="Share">
+                <button onClick={() => shareMsg(m.text)} style={s.actionBtn}>
                   <IconShare />
                   <span>Share</span>
                 </button>
-                <button onClick={() => saveAsReport(m.text, i)} style={s.actionBtn} title="Save as Report">
+                <button onClick={() => saveAsReport(m.text, i)} style={s.actionBtn}>
                   <IconReport />
                   <span>{savedMsgId === i ? 'Saved!' : 'Report'}</span>
                 </button>
