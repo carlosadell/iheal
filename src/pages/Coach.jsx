@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { fetchCoachMessages, insertCoachMessage, clearCoachMessages } from '../lib/supabase'
+import { fetchCoachMessages, insertCoachMessage, insertReport } from '../lib/supabase'
 
 const GREEN  = '#c5f135'
 const CARD   = '#1e2128'
@@ -98,6 +98,23 @@ function fileToBase64(file) {
   })
 }
 
+// Icon components
+const IconCopy = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+  </svg>
+)
+const IconShare = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
+  </svg>
+)
+const IconReport = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+  </svg>
+)
+
 export default function Coach() {
   const [msgs, setMsgs]             = useState([INITIAL_MSG])
   const [input, setInput]           = useState('')
@@ -105,6 +122,8 @@ export default function Coach() {
   const [loading, setLoading]       = useState(true)
   const [images, setImages]         = useState([])
   const [lastFailed, setLastFailed] = useState(null)
+  const [savedMsgId, setSavedMsgId] = useState(null) // tracks which msg was just saved
+  const [copiedMsgId, setCopiedMsgId] = useState(null)
   const bottomRef                   = useRef(null)
   const inputRef                    = useRef(null)
   const fileRef                     = useRef(null)
@@ -156,7 +175,6 @@ export default function Coach() {
         }
         return { role: m.role === 'ai' ? 'assistant' : 'user', content: m.text }
       })
-
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -198,13 +216,34 @@ export default function Coach() {
     await sendPayload(newMsgs, attachedImages)
   }
 
-  const handleClearHistory = async () => {
-    await clearCoachMessages()
-    setMsgs([INITIAL_MSG])
+  const copyMsg = async (text, idx) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopiedMsgId(idx)
+      setTimeout(() => setCopiedMsgId(null), 2000)
+    } catch {}
   }
 
-  const copyMsg = (text) => {
-    navigator.clipboard.writeText(text).catch(() => {})
+  const shareMsg = (text) => {
+    if (navigator.share) {
+      navigator.share({ title: 'iHeal Coach', text }).catch(() => {})
+    } else {
+      navigator.clipboard.writeText(text)
+    }
+  }
+
+  const saveAsReport = async (text, idx) => {
+    const date = new Date().toISOString().slice(0, 10)
+    const title = `AI Coach — ${new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' })}`
+    await insertReport({
+      date,
+      recipient: 'AI Coach',
+      language: 'English',
+      content: text,
+      notes: 'Saved from AI Coach conversation',
+    })
+    setSavedMsgId(idx)
+    setTimeout(() => setSavedMsgId(null), 2000)
   }
 
   if (loading) {
@@ -232,7 +271,18 @@ export default function Coach() {
             </div>
             {m.role === 'ai' && !m.isError && (
               <div style={s.msgActions}>
-                <button onClick={() => copyMsg(m.text)} style={s.actionBtn}>Copy</button>
+                <button onClick={() => copyMsg(m.text, i)} style={s.actionBtn} title="Copy">
+                  <IconCopy />
+                  <span>{copiedMsgId === i ? 'Copied' : 'Copy'}</span>
+                </button>
+                <button onClick={() => shareMsg(m.text)} style={s.actionBtn} title="Share">
+                  <IconShare />
+                  <span>Share</span>
+                </button>
+                <button onClick={() => saveAsReport(m.text, i)} style={s.actionBtn} title="Save as Report">
+                  <IconReport />
+                  <span>{savedMsgId === i ? 'Saved!' : 'Report'}</span>
+                </button>
               </div>
             )}
           </div>
@@ -306,8 +356,8 @@ const s = {
   msg:        { padding: '12px 15px', fontSize: 15, lineHeight: 1.6, borderRadius: 16 },
   msgAi:      { background: CARD, border: `1px solid ${BORDER}`, borderBottomLeftRadius: 3, color: TEXT2 },
   msgUser:    { background: GREEN, borderBottomRightRadius: 3, color: '#000', fontWeight: 500 },
-  msgActions: { display: 'flex', gap: 8, marginTop: 4, paddingLeft: 4 },
-  actionBtn:  { background: 'none', border: 'none', color: '#4a5568', fontSize: 11, cursor: 'pointer', padding: '2px 6px', borderRadius: 6 },
+  msgActions: { display: 'flex', gap: 6, marginTop: 5, paddingLeft: 2 },
+  actionBtn:  { display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#6a7080', fontSize: 11, fontFamily: "'DM Sans', sans-serif", cursor: 'pointer', padding: '4px 9px', borderRadius: 7, transition: 'color 0.15s' },
   retryBtn:   { background: 'rgba(197,241,53,0.1)', border: '1px solid rgba(197,241,53,0.3)', color: GREEN, fontSize: 12, fontWeight: 600, padding: '6px 14px', borderRadius: 8, cursor: 'pointer' },
   imageStrip: { display: 'flex', gap: 8, padding: '8px 16px', overflowX: 'auto', borderTop: `1px solid ${BORDER}` },
   imageThumb: { position: 'relative', width: 56, height: 56, flexShrink: 0, borderRadius: 8, overflow: 'hidden', border: `1px solid ${BORDER}` },
