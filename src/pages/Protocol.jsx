@@ -7,9 +7,24 @@ const TEXT2  = '#c8ccd8'
 const TEXT3  = '#888a96'
 const CARD3  = '#2e3240'
 
-export default function Protocol({ protocol, togProto, supplements, togSupp, today }) {
+export default function Protocol({ protocol, togProto, supplements, togSupp, today, checksLoaded }) {
   const peptides = protocol.filter(p => p.group === 'peptide')
   const meds     = protocol.filter(p => p.group === 'med')
+
+  if (!checksLoaded) {
+    return (
+      <div>
+        <div style={s.hero}>
+          <div style={s.heroOverlay} /><div style={s.heroGlow} />
+          <div style={s.heroContent}>
+            <div style={s.eyebrow}>Active stack</div>
+            <div style={s.heroTitle}>PROTOCOL</div>
+          </div>
+        </div>
+        <div style={{padding:'32px 16px',textAlign:'center',color:'#6a6e7a',fontSize:13}}>Loading...</div>
+      </div>
+    )
+  }
 
   return (
     <div>
@@ -29,10 +44,7 @@ export default function Protocol({ protocol, togProto, supplements, togSupp, tod
             <div style={s.rowL}>
               <div style={s.ricon}>{p.icon}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
-                  <div style={s.rtitle}>{p.name}</div>
-                  {p.time && <span style={s.timeTag}>{p.time}</span>}
-                </div>
+                <div style={s.rtitle}>{p.name}</div>
                 <div style={s.rsub}>{p.sub}</div>
               </div>
             </div>
@@ -57,10 +69,7 @@ export default function Protocol({ protocol, togProto, supplements, togSupp, tod
             <div style={s.rowL}>
               <div style={s.ricon}>{p.icon}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
-                  <div style={s.rtitle}>{p.name}</div>
-                  {p.time && <span style={s.timeTag}>{p.time}</span>}
-                </div>
+                <div style={s.rtitle}>{p.name}</div>
                 <div style={s.rsub}>{p.sub}</div>
               </div>
             </div>
@@ -141,5 +150,4 @@ const s = {
   badgeDone:   { background: 'rgba(255,255,255,.06)', color: TEXT3 },
   chk:         { width: 26, height: 26, borderRadius: 7, border: `2px solid ${BORDER}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   chkDone:     { background: GREEN, borderColor: GREEN },
-  timeTag:     { fontSize: 10, fontWeight: 600, color: GREEN, background: 'rgba(197,241,53,.1)', padding: '2px 7px', borderRadius: 6, letterSpacing: .3, flexShrink: 0 },
 }
