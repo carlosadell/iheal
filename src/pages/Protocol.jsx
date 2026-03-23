@@ -7,24 +7,9 @@ const TEXT2  = '#c8ccd8'
 const TEXT3  = '#888a96'
 const CARD3  = '#2e3240'
 
-export default function Protocol({ protocol, togProto, supplements, togSupp, today, checksLoaded }) {
+export default function Protocol({ protocol, togProto, supplements, togSupp, today }) {
   const peptides = protocol.filter(p => p.group === 'peptide')
   const meds     = protocol.filter(p => p.group === 'med')
-
-  if (!checksLoaded) {
-    return (
-      <div>
-        <div style={s.hero}>
-          <div style={s.heroOverlay} /><div style={s.heroGlow} />
-          <div style={s.heroContent}>
-            <div style={s.eyebrow}>Active stack</div>
-            <div style={s.heroTitle}>PROTOCOL</div>
-          </div>
-        </div>
-        <div style={{padding:'32px 16px',textAlign:'center',color:'#6a6e7a',fontSize:13}}>Loading protocol...</div>
-      </div>
-    )
-  }
 
   return (
     <div>
