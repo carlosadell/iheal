@@ -77,7 +77,8 @@ export default function App() {
   const [macroLogs,   setMacroLogs]  = useState([])
   const [labResults,  setLabResults] = useState([])
   const [bpLogs,      setBpLogs]     = useState([])
-  const [loading,     setLoading]    = useState(true)
+  const [loading,      setLoading]      = useState(true)
+  const [checksLoaded, setChecksLoaded] = useState(false)
 
   useEffect(() => {
     async function loadAll() {
@@ -99,30 +100,17 @@ export default function App() {
         setProtocol(p => p.map(i => ({...i, done: checkMap[i.key] ?? false})))
         setSupps(s => s.map(i => ({...i, done: checkMap[i.key] ?? false})))
       }
+      setChecksLoaded(true)
       setLoading(false)
     }
     loadAll()
   }, [])
 
   useEffect(() => {
-    let lastKey = getTodayKey()
     const id = setInterval(() => {
       setTime(getTime())
       setTodayStr(getTodayStr())
       setDayNum(getDayNum())
-      const currentKey = getTodayKey()
-      if (currentKey !== lastKey) {
-        lastKey = currentKey
-        setProtocol(buildProtocolItems().map(p => ({...p, done:false})))
-        setSupps(SUPPLEMENT_ITEMS.map(s => ({...s, done:false})))
-        fetchProtocolChecks(currentKey).then(checks => {
-          if (checks.length) {
-            const checkMap = Object.fromEntries(checks.map(c => [c.key, c.done]))
-            setProtocol(p => p.map(i => ({...i, done: checkMap[i.key] ?? false})))
-            setSupps(s => s.map(i => ({...i, done: checkMap[i.key] ?? false})))
-          }
-        })
-      }
     }, 10000)
     return () => clearInterval(id)
   }, [])
@@ -140,7 +128,7 @@ export default function App() {
   }
 
   const shared = {
-    protocol, supplements, macroTab, time, todayStr, dayNum, loading,
+    protocol, supplements, macroTab, time, todayStr, dayNum, loading, checksLoaded,
     setMacroTab, togProto, togSupp, setPage,
     sleepLogs, bodyComp, labResults, macroLogs, bpLogs,
     profile:  seedProfile,

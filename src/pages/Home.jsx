@@ -61,6 +61,16 @@ export default function Home({sleepLogs, protocol, supplements, togProto, togSup
 
   const sleepChart = sleepLogs.map(s => ({v:s.deep_pct, d:parseInt(s.date.slice(8))+'M'}))
 
+  const trazStart = new Date('2026-03-17')
+  const today = new Date()
+  const trazNight = Math.floor((today - trazStart) / (1000*60*60*24)) + 1
+  const trazWeek = trazNight <= 7 ? 1 : trazNight <= 14 ? 2 : 3
+  const nextDose = trazWeek === 1 ? '100mg' : trazWeek === 2 ? '150mg' : null
+  const nextDoseDate = trazWeek === 1 ? 'March 24' : trazWeek === 2 ? 'March 31' : null
+
+  const scoreLabel = last.score >= 80 ? 'GOOD' : last.score >= 70 ? 'OK' : 'LOW'
+  const scoreType  = last.score >= 80 ? 'great' : last.score >= 70 ? 'ok' : 'warn'
+
   return (
     <div>
       {/* HERO */}
@@ -78,17 +88,20 @@ export default function Home({sleepLogs, protocol, supplements, togProto, togSup
       <div style={{margin:'10px 16px 0',background:'rgba(197,241,53,.05)',border:'1px solid rgba(197,241,53,.2)',borderRadius:14,padding:'11px 14px',display:'flex',gap:10,alignItems:'flex-start'}}>
         <div style={{width:7,height:7,borderRadius:'50%',background:G,flexShrink:0,marginTop:5}}/>
         <div style={{fontSize:13,lineHeight:1.5}}>
-          <span style={{color:G,fontWeight:600}}>Night 6 on Trazodone — score 75.</span> Deep sleep 27min / 7%. Week 2 dose (100mg) starts March 24. Monitor avg sleep HR vs baseline 58–62 bpm.
+          <span style={{color:G,fontWeight:600}}>Night {trazNight} on Trazodone — score {last.score ?? ''}.</span>
+          {' '}Deep sleep {last.deep_min ?? ''}min / {last.deep_pct ?? ''}%.
+          {nextDose && ` Week ${trazWeek + 1} dose (${nextDose}) starts ${nextDoseDate}.`}
+          {' '}Monitor avg sleep HR vs baseline 58–62 bpm.
         </div>
       </div>
 
       {/* LAST NIGHT */}
       {sec('Last Night')}
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,padding:'0 16px'}}>
-        <MetricCard label="Deep Sleep" value={last.deep_min} unit="m" sub={`${last.deep_pct}% of total`} delta="Night 6" deltaType="ok"/>
-        <MetricCard label="Sleep Score" value={last.score} sub="Trazodone wk1" delta="GOOD" deltaType="great"/>
-        <MetricCard label="HRV Avg" value={last.hrv_ms} unit="ms" sub={`Max ${last.hrv_max_ms||37}ms`} delta="stable" deltaType="ok"/>
-        <MetricCard label="Resting HR" value={last.resting_hr} unit="bpm" sub={`Baseline 58–62 bpm`} delta="watch trend" deltaType="warn"/>
+        <MetricCard label="Deep Sleep" value={last.deep_min} unit="m" sub={`${last.deep_pct}% of total`} delta={`Night ${trazNight}`} deltaType="ok"/>
+        <MetricCard label="Sleep Score" value={last.score} sub={`Trazodone wk${trazWeek}`} delta={scoreLabel} deltaType={scoreType}/>
+        <MetricCard label="HRV Avg" value={last.hrv_ms} unit="ms" sub={`Max ${last.hrv_max_ms || ''}ms`} delta="stable" deltaType="ok"/>
+        <MetricCard label="Resting HR" value={last.resting_hr} unit="bpm" sub="Baseline 58–62 bpm" delta="watch trend" deltaType="warn"/>
       </div>
 
       {/* DEEP SLEEP TREND */}
