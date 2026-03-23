@@ -7,7 +7,10 @@ export default function handler(req, res) {
   if (req.method === 'OPTIONS') { res.status(200).end(); return }
   if (req.method !== 'POST') { res.status(405).end(); return }
 
-  const bodyStr = JSON.stringify(typeof req.body === 'string' ? JSON.parse(req.body) : req.body)
+  const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body
+  const useStream = body.stream !== false // default true, false only when explicitly set
+
+  const outBody = JSON.stringify({ ...body, stream: useStream })
 
   const options = {
     hostname: 'api.anthropic.com',
@@ -17,19 +20,34 @@ export default function handler(req, res) {
       'Content-Type': 'application/json',
       'x-api-key': process.env.ANTHROPIC_API_KEY,
       'anthropic-version': '2023-06-01',
-      'Content-Length': Buffer.byteLength(bodyStr),
+      'Content-Length': Buffer.byteLength(outBody),
     },
   }
 
+  if (useStream) {
+    res.setHeader('Content-Type', 'text/event-stream')
+    res.setHeader('Cache-Control', 'no-cache')
+    res.setHeader('Connection', 'keep-alive')
+  }
+
   const request = https.request(options, (response) => {
-    let data = ''
-    response.on('data', chunk => { data += chunk })
-    response.on('end', () => {
-      try { res.status(200).json(JSON.parse(data)) }
-      catch(e) { res.status(500).json({ error: 'Parse error: ' + e.message }) }
-    })
+    if (useStream) {
+      response.on('data', (chunk) => { res.write(chunk) })
+      response.on('end', () => { res.end() })
+    } else {
+      let data = ''
+      response.on('data', (chunk) => { data += chunk })
+      response.on('end', () => {
+        try { res.status(200).json(JSON.parse(data)) }
+        catch (e) { res.status(500).json({ error: 'Parse error: ' + e.message }) }
+      })
+    }
   })
-  request.on('error', (err) => res.status(500).json({ error: err.message }))
-  request.write(bodyStr)
+
+  request.on('error', (err) => {
+    res.status(500).json({ error: err.message })
+  })
+
+  request.write(outBody)
   request.end()
 }
