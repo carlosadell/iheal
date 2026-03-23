@@ -29,7 +29,10 @@ export default function Protocol({ protocol, togProto, supplements, togSupp, tod
             <div style={s.rowL}>
               <div style={s.ricon}>{p.icon}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={s.rtitle}>{p.name}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                  <div style={s.rtitle}>{p.name}</div>
+                  {p.time && <span style={s.timeTag}>{p.time}</span>}
+                </div>
                 <div style={s.rsub}>{p.sub}</div>
               </div>
             </div>
@@ -54,7 +57,10 @@ export default function Protocol({ protocol, togProto, supplements, togSupp, tod
             <div style={s.rowL}>
               <div style={s.ricon}>{p.icon}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={s.rtitle}>{p.name}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                  <div style={s.rtitle}>{p.name}</div>
+                  {p.time && <span style={s.timeTag}>{p.time}</span>}
+                </div>
                 <div style={s.rsub}>{p.sub}</div>
               </div>
             </div>
@@ -135,4 +141,5 @@ const s = {
   badgeDone:   { background: 'rgba(255,255,255,.06)', color: TEXT3 },
   chk:         { width: 26, height: 26, borderRadius: 7, border: `2px solid ${BORDER}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   chkDone:     { background: GREEN, borderColor: GREEN },
+  timeTag:     { fontSize: 10, fontWeight: 600, color: GREEN, background: 'rgba(197,241,53,.1)', padding: '2px 7px', borderRadius: 6, letterSpacing: .3, flexShrink: 0 },
 }

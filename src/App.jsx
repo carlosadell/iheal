@@ -105,10 +105,24 @@ export default function App() {
   }, [])
 
   useEffect(() => {
+    let lastKey = getTodayKey()
     const id = setInterval(() => {
       setTime(getTime())
       setTodayStr(getTodayStr())
       setDayNum(getDayNum())
+      const currentKey = getTodayKey()
+      if (currentKey !== lastKey) {
+        lastKey = currentKey
+        setProtocol(buildProtocolItems().map(p => ({...p, done:false})))
+        setSupps(SUPPLEMENT_ITEMS.map(s => ({...s, done:false})))
+        fetchProtocolChecks(currentKey).then(checks => {
+          if (checks.length) {
+            const checkMap = Object.fromEntries(checks.map(c => [c.key, c.done]))
+            setProtocol(p => p.map(i => ({...i, done: checkMap[i.key] ?? false})))
+            setSupps(s => s.map(i => ({...i, done: checkMap[i.key] ?? false})))
+          }
+        })
+      }
     }, 10000)
     return () => clearInterval(id)
   }, [])
