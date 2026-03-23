@@ -77,8 +77,7 @@ export default function App() {
   const [macroLogs,   setMacroLogs]  = useState([])
   const [labResults,  setLabResults] = useState([])
   const [bpLogs,      setBpLogs]     = useState([])
-  const [loading,      setLoading]      = useState(true)
-  const [checksLoaded, setChecksLoaded] = useState(false)
+  const [loading,     setLoading]    = useState(true)
 
   useEffect(() => {
     async function loadAll() {
@@ -100,7 +99,6 @@ export default function App() {
         setProtocol(p => p.map(i => ({...i, done: checkMap[i.key] ?? false})))
         setSupps(s => s.map(i => ({...i, done: checkMap[i.key] ?? false})))
       }
-      setChecksLoaded(true)
       setLoading(false)
     }
     loadAll()
@@ -116,19 +114,23 @@ export default function App() {
   }, [])
 
   const togProto = async (key) => {
-    let newDone
-    setProtocol(p => p.map(i => { if (i.key !== key) return i; newDone = !i.done; return {...i, done:newDone} }))
+    const current = protocol.find(i => i.key === key)
+    if (!current) return
+    const newDone = !current.done
+    setProtocol(p => p.map(i => i.key === key ? {...i, done: newDone} : i))
     await upsertProtocolCheck(getTodayKey(), key, newDone)
   }
 
   const togSupp = async (key) => {
-    let newDone
-    setSupps(s => s.map(i => { if (i.key !== key) return i; newDone = !i.done; return {...i, done:newDone} }))
+    const current = supplements.find(i => i.key === key)
+    if (!current) return
+    const newDone = !current.done
+    setSupps(s => s.map(i => i.key === key ? {...i, done: newDone} : i))
     await upsertProtocolCheck(getTodayKey(), key, newDone)
   }
 
   const shared = {
-    protocol, supplements, macroTab, time, todayStr, dayNum, loading, checksLoaded,
+    protocol, supplements, macroTab, time, todayStr, dayNum, loading,
     setMacroTab, togProto, togSupp, setPage,
     sleepLogs, bodyComp, labResults, macroLogs, bpLogs,
     profile:  seedProfile,

@@ -314,7 +314,7 @@ export default function Coach() {
     setImages([])
     if (inputRef.current) inputRef.current.style.height = 'auto'
     const displayText = text || `[${attachedImages.length} photo${attachedImages.length > 1 ? 's' : ''}]`
-    const newMsgs = [...msgs, { role: 'user', text: displayText }]
+    const newMsgs = [...msgs, { role: 'user', text: displayText, images: attachedImages }]
     setMsgs(newMsgs)
     await insertCoachMessage('user', displayText)
     await sendPayload(newMsgs, attachedImages)
@@ -368,8 +368,21 @@ export default function Coach() {
                   <div style={{ marginBottom: 8, color: TEXT2 }}>Connection error. Try again.</div>
                   <button onClick={() => send(lastFailed)} style={s.retryBtn}>↺ Retry</button>
                 </div>
+              ) : m.role === 'user' ? (
+                <div>
+                  {m.images && m.images.length > 0 && (
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: m.text && m.text !== `[${m.images.length} photo${m.images.length > 1 ? 's' : ''}]` ? 8 : 0 }}>
+                      {m.images.map((img, ii) => (
+                        <img key={ii} src={`data:${img.mediaType};base64,${img.base64}`}
+                          style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 8, display: 'block' }} alt="" />
+                      ))}
+                    </div>
+                  )}
+                  {m.text && !m.text.startsWith('[') && <div>{m.text}</div>}
+                  {m.text && m.text.startsWith('[') && (!m.images || m.images.length === 0) && <div>{m.text}</div>}
+                </div>
               ) : (
-                m.role === 'ai' ? renderText(m.text) : m.text
+                renderText(m.text)
               )}
             </div>
 
