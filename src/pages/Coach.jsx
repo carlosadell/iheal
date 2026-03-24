@@ -113,12 +113,26 @@ function renderInline(text) {
   })
 }
 
-function fileToBase64(file) {
+function compressImage(file, maxDim = 1120, quality = 0.82) {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result.split(',')[1])
-    reader.onerror = reject
-    reader.readAsDataURL(file)
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      let { width, height } = img
+      if (width > maxDim || height > maxDim) {
+        if (width > height) { height = Math.round(height * maxDim / width); width = maxDim }
+        else { width = Math.round(width * maxDim / height); height = maxDim }
+      }
+      const canvas = document.createElement('canvas')
+      canvas.width = width
+      canvas.height = height
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height)
+      const base64 = canvas.toDataURL('image/jpeg', quality).split(',')[1]
+      resolve({ base64, mediaType: 'image/jpeg', name: file.name })
+    }
+    img.onerror = reject
+    img.src = url
   })
 }
 
@@ -144,7 +158,6 @@ async function extractAndSave(conversationMessages, attachedImages) {
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 500,
-        stream: false,
         system: EXTRACTION_SYSTEM,
         messages: extractMessages,
       }),
@@ -238,11 +251,7 @@ export default function Coach() {
 
   const handleFiles = async (files) => {
     const selected = Array.from(files).slice(0, 10)
-    const processed = await Promise.all(selected.map(async (file) => ({
-      base64: await fileToBase64(file),
-      mediaType: file.type,
-      name: file.name,
-    })))
+    const processed = await Promise.all(selected.map(file => compressImage(file)))
     setImages(prev => [...prev, ...processed])
   }
 
@@ -281,60 +290,21 @@ export default function Coach() {
           messages: apiMessages,
         }),
       })
-
-      if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.error || 'API error')
-      }
-
-      // Add empty AI message to start streaming into
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'API error')
+      const aiText = data.content?.[0]?.text || 'Error — try again.'
       const newMsgIdx = msgHistory.length
-      setMsgs(prev => [...prev, { role: 'ai', text: '' }])
-      setThinking(false)
 
-      const reader = res.body.getReader()
-      const decoder = new TextDecoder()
-      let fullText = ''
-      let buffer = ''
+      setMsgs(prev => [...prev, { role: 'ai', text: aiText }])
+      await insertCoachMessage('ai', aiText)
 
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n')
-        buffer = lines.pop() // keep incomplete line in buffer
-
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue
-          const data = line.slice(6).trim()
-          if (data === '[DONE]') continue
-          try {
-            const parsed = JSON.parse(data)
-            const delta = parsed.delta?.text || ''
-            if (delta) {
-              fullText += delta
-              setMsgs(prev => {
-                const updated = [...prev]
-                updated[updated.length - 1] = { role: 'ai', text: fullText }
-                return updated
-              })
-            }
-          } catch {}
+      extractAndSave(msgHistory, attachedImages).then(saved => {
+        if (saved) {
+          setSavedData({ idx: newMsgIdx, labels: saved })
+          setTimeout(() => setSavedData(null), 4000)
         }
-      }
-
-      if (fullText) {
-        await insertCoachMessage('ai', fullText)
-        extractAndSave(msgHistory, attachedImages).then(saved => {
-          if (saved) {
-            setSavedData({ idx: newMsgIdx, labels: saved })
-            setTimeout(() => setSavedData(null), 4000)
-          }
-        })
-      }
-
+      })
     } catch {
-      setThinking(false)
       setMsgs(prev => [...prev, { role: 'ai', text: 'CONNECTION_ERROR', isError: true }])
       setLastFailed({ msgHistory, attachedImages })
     }
@@ -354,7 +324,7 @@ export default function Coach() {
     setImages([])
     if (inputRef.current) inputRef.current.style.height = 'auto'
     const displayText = text || `[${attachedImages.length} photo${attachedImages.length > 1 ? 's' : ''}]`
-    const newMsgs = [...msgs, { role: 'user', text: displayText, images: attachedImages }]
+    const newMsgs = [...msgs, { role: 'user', text: displayText }]
     setMsgs(newMsgs)
     await insertCoachMessage('user', displayText)
     await sendPayload(newMsgs, attachedImages)
@@ -408,20 +378,8 @@ export default function Coach() {
                   <div style={{ marginBottom: 8, color: TEXT2 }}>Connection error. Try again.</div>
                   <button onClick={() => send(lastFailed)} style={s.retryBtn}>↺ Retry</button>
                 </div>
-              ) : m.role === 'user' ? (
-                <div>
-                  {m.images && m.images.length > 0 && (
-                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
-                      {m.images.map((img, ii) => (
-                        <img key={ii} src={`data:${img.mediaType};base64,${img.base64}`}
-                          style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 8 }} alt="" />
-                      ))}
-                    </div>
-                  )}
-                  {m.text && !m.text.startsWith('[') && <div>{m.text}</div>}
-                </div>
               ) : (
-                renderText(m.text)
+                m.role === 'ai' ? renderText(m.text) : m.text
               )}
             </div>
 
