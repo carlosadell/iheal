@@ -57,11 +57,14 @@ function BarChart({data, maxVal, colorFn, labelFn, subLabelKey, highlightLast}) 
   )
 }
 
-const ALERT_SYSTEM = `You are summarising Carlos's current health situation for a home screen widget.
-Write exactly 2 sentences. No bullet points. No markdown. No greetings. Plain text only.
-Sentence 1: The most clinically relevant thing happening right now based on the conversation.
-Sentence 2: The single most important thing to watch or do today.
-Be specific and direct. Use the conversation context — not generic health advice.`
+const ALERT_SYSTEM = `You are summarising the current health situation for a home screen widget. The user is Carlos but always refer to him as "You" or "Your".
+
+Respond with exactly this format and nothing else:
+
+SUMMARY: [2 sentences max. The most clinically relevant thing happening right now based on the conversation and data.]
+NEXT: [2-3 short action items or warnings separated by " · " — what to do, watch for, or avoid today based on the conversation.]
+
+No bullet points. No markdown. No greetings. No extra text. Be specific and use actual context from the conversation.`
 
 export default function Home({sleepLogs, protocol, supplements, togProto, togSupp, setPage, profile, time, todayStr, dayNum}) {
   const last = sleepLogs[sleepLogs.length-1] || {}
@@ -75,7 +78,8 @@ export default function Home({sleepLogs, protocol, supplements, togProto, togSup
   const scoreLabel = (last.score||0) >= 80 ? 'GOOD' : (last.score||0) >= 70 ? 'OK' : 'LOW'
   const scoreType  = (last.score||0) >= 80 ? 'great' : (last.score||0) >= 70 ? 'ok' : 'warn'
 
-  const [alertText, setAlertText] = useState('')
+  const [alertSummary, setAlertSummary] = useState('')
+  const [alertNext, setAlertNext]       = useState('')
   const generated = useRef(false)
 
   useEffect(() => {
@@ -95,15 +99,18 @@ export default function Home({sleepLogs, protocol, supplements, togProto, togSup
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             model: 'claude-sonnet-4-20250514',
-            max_tokens: 120,
+            max_tokens: 180,
             stream: false,
             system: ALERT_SYSTEM,
             messages: [...recent, { role: 'user', content: 'Summarise my current situation for the home screen.' }],
           }),
         })
         const data = await res.json()
-        const text = data.content?.[0]?.text?.trim()
-        if (text) setAlertText(text)
+        const text = data.content?.[0]?.text?.trim() || ''
+        const summaryMatch = text.match(/SUMMARY:\s*(.+?)(?=NEXT:|$)/s)
+        const nextMatch    = text.match(/NEXT:\s*(.+)/s)
+        if (summaryMatch) setAlertSummary(summaryMatch[1].trim())
+        if (nextMatch)    setAlertNext(nextMatch[1].trim())
       } catch {}
     })
   }, [])
@@ -122,10 +129,33 @@ export default function Home({sleepLogs, protocol, supplements, togProto, togSup
       </div>
 
       {/* ALERT */}
-      <div style={{margin:'10px 16px 0',background:'rgba(197,241,53,.05)',border:'1px solid rgba(197,241,53,.2)',borderRadius:14,padding:'11px 14px',display:'flex',gap:10,alignItems:'flex-start'}}>
+      <div style={{margin:'10px 16px 0',background:'rgba(197,241,53,.05)',border:'1px solid rgba(197,241,53,.2)',borderRadius:14,padding:'13px 14px',display:'flex',gap:10,alignItems:'flex-start'}}>
         <div style={{width:7,height:7,borderRadius:'50%',background:G,flexShrink:0,marginTop:5}}/>
-        <div style={{fontSize:13,lineHeight:1.6,color:T2}}>
-          {alertText || <span style={{color:T3,fontStyle:'italic'}}>Loading summary...</span>}
+        <div style={{flex:1}}>
+          {!alertSummary && !alertNext
+            ? <span style={{color:T3,fontStyle:'italic',fontSize:13}}>Loading summary...</span>
+            : <>
+                {alertSummary && (
+                  <div style={{marginBottom: alertNext ? 10 : 0}}>
+                    <div style={{fontSize:10,fontWeight:700,color:G,letterSpacing:1.5,textTransform:'uppercase',marginBottom:4}}>Summary</div>
+                    <div style={{fontSize:13,lineHeight:1.6,color:T2}}>{alertSummary}</div>
+                  </div>
+                )}
+                {alertNext && (
+                  <div>
+                    <div style={{fontSize:10,fontWeight:700,color:G,letterSpacing:1.5,textTransform:'uppercase',marginBottom:4}}>Next Steps</div>
+                    <div style={{fontSize:13,lineHeight:1.6,color:T2}}>
+                      {alertNext.split(' · ').map((item, i) => (
+                        <div key={i} style={{display:'flex',gap:7,marginTop: i > 0 ? 4 : 0}}>
+                          <span style={{color:G,flexShrink:0}}>›</span>
+                          <span>{item}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+          }
         </div>
       </div>
 
