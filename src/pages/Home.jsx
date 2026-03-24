@@ -1,3 +1,6 @@
+import { useState, useEffect, useRef } from 'react'
+import { fetchCoachMessages } from '../lib/supabase'
+
 const G='#c5f135', BG='#000', CARD='#1e2128', CARD3='#2e3240', BORDER='#2a2e38'
 const T='#fff', T2='#b0b4c0', T3='#6a6e7a', FD="'Bebas Neue',sans-serif"
 
@@ -54,35 +57,56 @@ function BarChart({data, maxVal, colorFn, labelFn, subLabelKey, highlightLast}) 
   )
 }
 
+const ALERT_SYSTEM = `You are summarising Carlos's current health situation for a home screen widget.
+Write exactly 2 sentences. No bullet points. No markdown. No greetings. Plain text only.
+Sentence 1: The most clinically relevant thing happening right now based on the conversation.
+Sentence 2: The single most important thing to watch or do today.
+Be specific and direct. Use the conversation context — not generic health advice.`
+
 export default function Home({sleepLogs, protocol, supplements, togProto, togSupp, setPage, profile, time, todayStr, dayNum}) {
   const last = sleepLogs[sleepLogs.length-1] || {}
   const doneProt = protocol.filter(p=>p.done).length + supplements.filter(s=>s.done).length
   const totalProt = protocol.length + supplements.length
-
   const sleepChart = sleepLogs.map(s => ({v:s.deep_pct, d:parseInt(s.date.slice(8))+'M'}))
 
   const trazStart = new Date('2026-03-17')
-  const today = new Date()
-  const trazNight = Math.floor((today - trazStart) / (1000*60*60*24)) + 1
-  const trazWeek = trazNight <= 7 ? 1 : trazNight <= 14 ? 2 : 3
-  const currentDose = trazWeek === 1 ? '50mg' : trazWeek === 2 ? '100mg' : '150mg'
-
-  const recentScores = sleepLogs.slice(-3).map(s => s.score).filter(Boolean)
-  const avgRecentScore = recentScores.length ? Math.round(recentScores.reduce((a,b) => a+b,0) / recentScores.length) : null
-  const hrElevated = (last.resting_hr || 0) > 70
-
-  const alertText = () => {
-    if (trazWeek === 1) return `Week 1 of Trazodone (50mg). Early adaptation phase — sleep architecture still settling. Watch deep sleep trend and resting HR before dose escalation.`
-    if (trazWeek === 2) {
-      const trend = avgRecentScore ? (avgRecentScore >= 78 ? 'Sleep responding well to 100mg' : avgRecentScore >= 72 ? 'Sleep mixed at 100mg' : 'Sleep struggling at 100mg') : 'Monitoring 100mg response'
-      const hr = hrElevated ? 'HR still elevated from Retatrutide — within expected range.' : 'HR stabilising.'
-      return `Week 2 of Trazodone (100mg). ${trend}. ${hr} 150mg decision point March 31 — flag Dr. Anton if avg sleep HR exceeds 78 bpm.`
-    }
-    return `Week 3 of Trazodone (150mg). Monitor closely for sedation carryover and HR response. Check in with Dr. Anton before continuing escalation.`
-  }
-
+  const trazDay = Math.floor((new Date() - trazStart) / (1000*60*60*24))
+  const trazWeek = trazDay < 7 ? 1 : trazDay < 14 ? 2 : 3
   const scoreLabel = (last.score||0) >= 80 ? 'GOOD' : (last.score||0) >= 70 ? 'OK' : 'LOW'
   const scoreType  = (last.score||0) >= 80 ? 'great' : (last.score||0) >= 70 ? 'ok' : 'warn'
+
+  const [alertText, setAlertText] = useState('')
+  const generated = useRef(false)
+
+  useEffect(() => {
+    if (generated.current) return
+    generated.current = true
+
+    fetchCoachMessages().then(async rows => {
+      if (!rows || rows.length === 0) return
+      const recent = rows.slice(-10).map(r => ({
+        role: r.role === 'ai' ? 'assistant' : 'user',
+        content: r.text
+      }))
+
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'claude-sonnet-4-20250514',
+            max_tokens: 120,
+            stream: false,
+            system: ALERT_SYSTEM,
+            messages: [...recent, { role: 'user', content: 'Summarise my current situation for the home screen.' }],
+          }),
+        })
+        const data = await res.json()
+        const text = data.content?.[0]?.text?.trim()
+        if (text) setAlertText(text)
+      } catch {}
+    })
+  }, [])
 
   return (
     <div>
@@ -100,17 +124,17 @@ export default function Home({sleepLogs, protocol, supplements, togProto, togSup
       {/* ALERT */}
       <div style={{margin:'10px 16px 0',background:'rgba(197,241,53,.05)',border:'1px solid rgba(197,241,53,.2)',borderRadius:14,padding:'11px 14px',display:'flex',gap:10,alignItems:'flex-start'}}>
         <div style={{width:7,height:7,borderRadius:'50%',background:G,flexShrink:0,marginTop:5}}/>
-        <div style={{fontSize:13,lineHeight:1.5,color:'#c8ccd8'}}>
-          {alertText()}
+        <div style={{fontSize:13,lineHeight:1.6,color:T2}}>
+          {alertText || <span style={{color:T3,fontStyle:'italic'}}>Loading summary...</span>}
         </div>
       </div>
 
       {/* LAST NIGHT */}
       {sec('Last Night')}
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,padding:'0 16px'}}>
-        <MetricCard label="Deep Sleep" value={last.deep_min} unit="m" sub={`${last.deep_pct}% of total`} delta={`Night ${trazNight}`} deltaType="ok"/>
+        <MetricCard label="Deep Sleep" value={last.deep_min} unit="m" sub={`${last.deep_pct}% of total`} delta={`Night ${trazDay+1}`} deltaType="ok"/>
         <MetricCard label="Sleep Score" value={last.score} sub={`Trazodone wk${trazWeek}`} delta={scoreLabel} deltaType={scoreType}/>
-        <MetricCard label="HRV Avg" value={last.hrv_ms} unit="ms" sub={`Max ${last.hrv_max_ms || ''}ms`} delta="stable" deltaType="ok"/>
+        <MetricCard label="HRV Avg" value={last.hrv_ms} unit="ms" sub={`Max ${last.hrv_max_ms||''}ms`} delta="stable" deltaType="ok"/>
         <MetricCard label="Resting HR" value={last.resting_hr} unit="bpm" sub="Baseline 58–62 bpm" delta="watch trend" deltaType="warn"/>
       </div>
 
