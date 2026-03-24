@@ -158,6 +158,7 @@ async function extractAndSave(conversationMessages, attachedImages) {
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 500,
+        stream: false,
         system: EXTRACTION_SYSTEM,
         messages: extractMessages,
       }),
@@ -290,21 +291,59 @@ export default function Coach() {
           messages: apiMessages,
         }),
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'API error')
-      const aiText = data.content?.[0]?.text || 'Error — try again.'
+
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || 'API error')
+      }
+
       const newMsgIdx = msgHistory.length
+      setMsgs(prev => [...prev, { role: 'ai', text: '' }])
+      setThinking(false)
 
-      setMsgs(prev => [...prev, { role: 'ai', text: aiText }])
-      await insertCoachMessage('ai', aiText)
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let fullText = ''
+      let buffer = ''
 
-      extractAndSave(msgHistory, attachedImages).then(saved => {
-        if (saved) {
-          setSavedData({ idx: newMsgIdx, labels: saved })
-          setTimeout(() => setSavedData(null), 4000)
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop()
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue
+          const data = line.slice(6).trim()
+          if (data === '[DONE]') continue
+          try {
+            const parsed = JSON.parse(data)
+            const delta = parsed.delta?.text || ''
+            if (delta) {
+              fullText += delta
+              setMsgs(prev => {
+                const updated = [...prev]
+                updated[updated.length - 1] = { role: 'ai', text: fullText }
+                return updated
+              })
+            }
+          } catch {}
         }
-      })
+      }
+
+      if (fullText) {
+        await insertCoachMessage('ai', fullText)
+        extractAndSave(msgHistory, attachedImages).then(saved => {
+          if (saved) {
+            setSavedData({ idx: newMsgIdx, labels: saved })
+            setTimeout(() => setSavedData(null), 4000)
+          }
+        })
+      }
+
     } catch {
+      setThinking(false)
       setMsgs(prev => [...prev, { role: 'ai', text: 'CONNECTION_ERROR', isError: true }])
       setLastFailed({ msgHistory, attachedImages })
     }
@@ -324,7 +363,7 @@ export default function Coach() {
     setImages([])
     if (inputRef.current) inputRef.current.style.height = 'auto'
     const displayText = text || `[${attachedImages.length} photo${attachedImages.length > 1 ? 's' : ''}]`
-    const newMsgs = [...msgs, { role: 'user', text: displayText }]
+    const newMsgs = [...msgs, { role: 'user', text: displayText, images: attachedImages }]
     setMsgs(newMsgs)
     await insertCoachMessage('user', displayText)
     await sendPayload(newMsgs, attachedImages)
@@ -378,8 +417,20 @@ export default function Coach() {
                   <div style={{ marginBottom: 8, color: TEXT2 }}>Connection error. Try again.</div>
                   <button onClick={() => send(lastFailed)} style={s.retryBtn}>↺ Retry</button>
                 </div>
+              ) : m.role === 'user' ? (
+                <div>
+                  {m.images && m.images.length > 0 && (
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
+                      {m.images.map((img, ii) => (
+                        <img key={ii} src={`data:${img.mediaType};base64,${img.base64}`}
+                          style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 8 }} alt="" />
+                      ))}
+                    </div>
+                  )}
+                  {m.text && !m.text.startsWith('[') && <div>{m.text}</div>}
+                </div>
               ) : (
-                m.role === 'ai' ? renderText(m.text) : m.text
+                renderText(m.text)
               )}
             </div>
 
