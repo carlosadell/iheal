@@ -67,8 +67,22 @@ export default function Home({sleepLogs, protocol, supplements, togProto, togSup
   const trazWeek = trazNight <= 7 ? 1 : trazNight <= 14 ? 2 : 3
   const currentDose = trazWeek === 1 ? '50mg' : trazWeek === 2 ? '100mg' : '150mg'
 
-  const scoreLabel = last.score >= 80 ? 'GOOD' : last.score >= 70 ? 'OK' : 'LOW'
-  const scoreType  = last.score >= 80 ? 'great' : last.score >= 70 ? 'ok' : 'warn'
+  const recentScores = sleepLogs.slice(-3).map(s => s.score).filter(Boolean)
+  const avgRecentScore = recentScores.length ? Math.round(recentScores.reduce((a,b) => a+b,0) / recentScores.length) : null
+  const hrElevated = (last.resting_hr || 0) > 70
+
+  const alertText = () => {
+    if (trazWeek === 1) return `Week 1 of Trazodone (50mg). Early adaptation phase — sleep architecture still settling. Watch deep sleep trend and resting HR before dose escalation.`
+    if (trazWeek === 2) {
+      const trend = avgRecentScore ? (avgRecentScore >= 78 ? 'Sleep responding well to 100mg' : avgRecentScore >= 72 ? 'Sleep mixed at 100mg' : 'Sleep struggling at 100mg') : 'Monitoring 100mg response'
+      const hr = hrElevated ? 'HR still elevated from Retatrutide — within expected range.' : 'HR stabilising.'
+      return `Week 2 of Trazodone (100mg). ${trend}. ${hr} 150mg decision point March 31 — flag Dr. Anton if avg sleep HR exceeds 78 bpm.`
+    }
+    return `Week 3 of Trazodone (150mg). Monitor closely for sedation carryover and HR response. Check in with Dr. Anton before continuing escalation.`
+  }
+
+  const scoreLabel = (last.score||0) >= 80 ? 'GOOD' : (last.score||0) >= 70 ? 'OK' : 'LOW'
+  const scoreType  = (last.score||0) >= 80 ? 'great' : (last.score||0) >= 70 ? 'ok' : 'warn'
 
   return (
     <div>
@@ -86,11 +100,8 @@ export default function Home({sleepLogs, protocol, supplements, togProto, togSup
       {/* ALERT */}
       <div style={{margin:'10px 16px 0',background:'rgba(197,241,53,.05)',border:'1px solid rgba(197,241,53,.2)',borderRadius:14,padding:'11px 14px',display:'flex',gap:10,alignItems:'flex-start'}}>
         <div style={{width:7,height:7,borderRadius:'50%',background:G,flexShrink:0,marginTop:5}}/>
-        <div style={{fontSize:13,lineHeight:1.5}}>
-          <span style={{color:G,fontWeight:600}}>Night {trazNight} on Trazodone — score {last.score ?? ''}.</span>
-          {' '}Deep sleep {last.deep_min ?? ''}min / {last.deep_pct ?? ''}%.
-          {` Week ${trazWeek} · ${currentDose}.`}
-          {' '}Monitor avg sleep HR vs baseline 58–62 bpm.
+        <div style={{fontSize:13,lineHeight:1.5,color:'#c8ccd8'}}>
+          {alertText()}
         </div>
       </div>
 
