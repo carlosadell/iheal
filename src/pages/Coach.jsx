@@ -257,6 +257,10 @@ export default function Coach() {
   }, [])
 
   useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'instant' })
+  }, [loading])
+
+  useEffect(() => {
     scrollToBottom()
   }, [msgs, thinking])
 
