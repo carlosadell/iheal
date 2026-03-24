@@ -234,8 +234,18 @@ export default function Coach() {
   const [copiedMsgId, setCopiedMsgId] = useState(null)
   const [savedData, setSavedData]     = useState(null)
   const bottomRef                     = useRef(null)
+  const msgsRef                       = useRef(null)
   const inputRef                      = useRef(null)
   const fileRef                       = useRef(null)
+
+  const scrollToBottom = () => {
+    const el = msgsRef.current
+    if (!el) return
+    const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight
+    if (distFromBottom < 120) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
+  }
 
   useEffect(() => {
     fetchCoachMessages().then(rows => {
@@ -247,7 +257,7 @@ export default function Coach() {
   }, [])
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    scrollToBottom()
   }, [msgs, thinking])
 
   const handleFiles = async (files) => {
@@ -408,7 +418,7 @@ export default function Coach() {
 
   return (
     <div style={s.wrap}>
-      <div style={s.msgs}>
+      <div style={s.msgs} ref={msgsRef}>
         {msgs.map((m, i) => (
           <div key={i} style={{ alignSelf: m.role === 'ai' ? 'flex-start' : 'flex-end', maxWidth: '88%' }}>
             <div style={{ ...s.msg, ...(m.role === 'ai' ? s.msgAi : s.msgUser) }}>
