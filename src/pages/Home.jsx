@@ -65,8 +65,7 @@ export default function Home({sleepLogs, protocol, supplements, togProto, togSup
   const today = new Date()
   const trazNight = Math.floor((today - trazStart) / (1000*60*60*24)) + 1
   const trazWeek = trazNight <= 7 ? 1 : trazNight <= 14 ? 2 : 3
-  const nextDose = trazWeek === 1 ? '100mg' : trazWeek === 2 ? '150mg' : null
-  const nextDoseDate = trazWeek === 1 ? 'March 24' : trazWeek === 2 ? 'March 31' : null
+  const currentDose = trazWeek === 1 ? '50mg' : trazWeek === 2 ? '100mg' : '150mg'
 
   const scoreLabel = last.score >= 80 ? 'GOOD' : last.score >= 70 ? 'OK' : 'LOW'
   const scoreType  = last.score >= 80 ? 'great' : last.score >= 70 ? 'ok' : 'warn'
@@ -90,7 +89,7 @@ export default function Home({sleepLogs, protocol, supplements, togProto, togSup
         <div style={{fontSize:13,lineHeight:1.5}}>
           <span style={{color:G,fontWeight:600}}>Night {trazNight} on Trazodone — score {last.score ?? ''}.</span>
           {' '}Deep sleep {last.deep_min ?? ''}min / {last.deep_pct ?? ''}%.
-          {nextDose && ` Week ${trazWeek + 1} dose (${nextDose}) starts ${nextDoseDate}.`}
+          {` Week ${trazWeek} · ${currentDose}.`}
           {' '}Monitor avg sleep HR vs baseline 58–62 bpm.
         </div>
       </div>

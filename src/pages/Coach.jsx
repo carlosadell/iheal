@@ -223,7 +223,7 @@ const IconReport = () => (
   </svg>
 )
 
-export default function Coach() {
+export default function Coach({ refreshSleep, refreshBody, refreshBp, refreshLabs }) {
   const [msgs, setMsgs]               = useState([INITIAL_MSG])
   const [input, setInput]             = useState('')
   const [thinking, setThinking]       = useState(false)
@@ -352,6 +352,10 @@ export default function Coach() {
           if (saved) {
             setSavedData({ idx: newMsgIdx, labels: saved })
             setTimeout(() => setSavedData(null), 4000)
+            if (saved.includes('sleep data') && refreshSleep) refreshSleep()
+            if (saved.includes('body composition') && refreshBody) refreshBody()
+            if (saved.includes('blood pressure') && refreshBp) refreshBp()
+            if (saved.includes('lab results') && refreshLabs) refreshLabs()
           }
         })
       }
