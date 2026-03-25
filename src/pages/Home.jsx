@@ -86,6 +86,19 @@ export default function Home({sleepLogs, protocol, supplements, togProto, togSup
     if (generated.current) return
     generated.current = true
 
+    const today = new Date().toISOString().slice(0, 10)
+    const cacheKey = `iheal_alert_${today}`
+    const cached = localStorage.getItem(cacheKey)
+
+    if (cached) {
+      try {
+        const { summary, next } = JSON.parse(cached)
+        if (summary) setAlertSummary(summary)
+        if (next)    setAlertNext(next)
+        return
+      } catch {}
+    }
+
     fetchCoachMessages().then(async rows => {
       if (!rows || rows.length === 0) return
       const recent = rows.slice(-10).map(r => ({
@@ -109,8 +122,16 @@ export default function Home({sleepLogs, protocol, supplements, togProto, togSup
         const text = data.content?.[0]?.text?.trim() || ''
         const summaryMatch = text.match(/SUMMARY:\s*(.+?)(?=NEXT:|$)/s)
         const nextMatch    = text.match(/NEXT:\s*(.+)/s)
-        if (summaryMatch) setAlertSummary(summaryMatch[1].trim())
-        if (nextMatch)    setAlertNext(nextMatch[1].trim())
+        const summary = summaryMatch ? summaryMatch[1].trim() : ''
+        const next    = nextMatch    ? nextMatch[1].trim()    : ''
+        if (summary) setAlertSummary(summary)
+        if (next)    setAlertNext(next)
+        if (summary || next) {
+          localStorage.setItem(cacheKey, JSON.stringify({ summary, next }))
+          Object.keys(localStorage)
+            .filter(k => k.startsWith('iheal_alert_') && k !== cacheKey)
+            .forEach(k => localStorage.removeItem(k))
+        }
       } catch {}
     })
   }, [])
