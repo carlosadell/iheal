@@ -12,6 +12,8 @@ const SYSTEM = `You are Carlos's personal AI health coach inside iHeal. Think an
 
 You have full context on Carlos's health below. When he asks questions beyond this context — about peptides, pharmacology, research, lifestyle, anything — reason from your training knowledge exactly as you would normally. Be direct and substantive. If you are uncertain about something, say so clearly and move on. Never invent numbers or data you don't have. Never collapse or over-apologise when corrected — just fix the error and continue.
 
+CRITICAL SAFETY RULE: Before mentioning any dosage, drug, or supplement in your response, cross-check it against the CURRENT PROTOCOL and SUPPLEMENTS sections below. Never contradict or undermine a dosage that is already established in the protocol. If you have concerns about a dose, flag them clearly but do not state incorrect doses as fact.
+
 Always prioritise data Carlos shares in the conversation over anything in this prompt.
 
 CURRENT PROTOCOL:
@@ -223,7 +225,7 @@ const IconReport = () => (
   </svg>
 )
 
-export default function Coach({ refreshSleep, refreshBody, refreshBp, refreshLabs }) {
+export default function Coach() {
   const [msgs, setMsgs]               = useState([INITIAL_MSG])
   const [input, setInput]             = useState('')
   const [thinking, setThinking]       = useState(false)
@@ -242,9 +244,7 @@ export default function Coach({ refreshSleep, refreshBody, refreshBp, refreshLab
     const el = msgsRef.current
     if (!el) return
     const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight
-    if (distFromBottom < 120) {
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-    }
+    if (distFromBottom < 120) bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
   useEffect(() => {
@@ -326,7 +326,6 @@ export default function Coach({ refreshSleep, refreshBody, refreshBp, refreshLab
         buffer += decoder.decode(value, { stream: true })
         const lines = buffer.split('\n')
         buffer = lines.pop()
-
         for (const line of lines) {
           if (!line.startsWith('data: ')) continue
           const data = line.slice(6).trim()
@@ -352,10 +351,6 @@ export default function Coach({ refreshSleep, refreshBody, refreshBp, refreshLab
           if (saved) {
             setSavedData({ idx: newMsgIdx, labels: saved })
             setTimeout(() => setSavedData(null), 4000)
-            if (saved.includes('sleep data') && refreshSleep) refreshSleep()
-            if (saved.includes('body composition') && refreshBody) refreshBody()
-            if (saved.includes('blood pressure') && refreshBp) refreshBp()
-            if (saved.includes('lab results') && refreshLabs) refreshLabs()
           }
         })
       }
