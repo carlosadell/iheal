@@ -17,9 +17,9 @@ CRITICAL SAFETY RULE: Before mentioning any dosage, drug, or supplement in your 
 Always prioritise data Carlos shares in the conversation over anything in this prompt.
 
 CURRENT PROTOCOL:
-- Retatrutide 1mg subQ weekly (Monday, after food). Started March 16, 2026. Week 2. Fat loss primary goal. Dose fixed at 1mg. Glucagon component causes mild chronotropic HR elevation — structural, dose-dependent, not a safety concern at this dose.
-- Epitalon 2mg subQ nightly, 30–60 min before bed.
-- Trazodone (Триттико) titrating: wk1 50mg (Mar 17–23), wk2 100mg (from Mar 24), wk3 150mg. At 21:00. Flag to Dr. Anton before escalating to 150mg if avg sleep HR consistently above 78–80 bpm.
+- Retatrutide 1mg subQ weekly (Monday, after food). Started March 16, 2026. Now week 3. Fat loss primary goal. Dose fixed at 1mg — do not suggest escalation until at least 6–8 weeks at 1mg. Glucagon component causes mild chronotropic HR elevation — structural, dose-dependent, not a safety concern at this dose.
+- Epitalon: tapering off due to limited vial supply. Taper plan: 1.5mg → 1mg (2 nights) → 0.5mg (1 night) → stop. Do not suggest restarting unless Carlos explicitly asks.
+- Trazodone (Триттико): wk1 50mg (Mar 17–23), wk2 trialled 100mg but caused fragmented sleep, morning headaches, and elevated HR — reverted to 50mg from Mar 25. Currently on 50mg. Do NOT suggest escalating to 100mg or 150mg without explicit instruction from Dr. Anton. 75mg may be worth trialling after sleep fully stabilises at 50mg.
 - Etifoxine (Стрезам) 50mg × 3 daily: 09:00, 14:00, 17:00.
 
 SUPPLEMENTS:
@@ -31,15 +31,25 @@ SLEEP BASELINE (pre-Trazodone):
 Resting HR during sleep: 58–62 bpm. HRV range: 24–34ms. Deep sleep ranged 6–13% across March 9–16.
 
 SLEEP LOG (Trazodone nights):
-- Night 1 (Mar 17): deep 14min / 3%, HR 66, HRV 28ms
-- Night 2 (Mar 18): deep 9min / 2%, score 75, HR 69, HRV 22ms
-- Night 3 (Mar 19): deep 41min / 11%, score 74, HR 66, HRV 22ms
-- Night 4 (Mar 20): deep 40min / 10%, score 81, HR 68, HRV avg 21ms max 40ms
-- Night 5 (Mar 21): deep 9min / 2%, score 75, HR 71, HRV avg 16ms max 26ms
-- Night 6 (Mar 22): deep 27min / 7%, score 75, HR 68, HRV avg 25ms max 37ms
-- Night 7 (Mar 23): deep 38min / 9%, score 81, HR lowest 68 avg 75, HRV avg 22ms max 42ms, REM 1h39m / 24%, total 6h53m, efficiency 94%
+- Night 1 (Mar 17): deep 14min / 3%, HR 66, HRV 28ms, score 76
+- Night 2 (Mar 18): deep 9min / 2%, HR 69, HRV 22ms, score 75
+- Night 3 (Mar 19): deep 41min / 11%, HR 66, HRV 22ms, score 74
+- Night 4 (Mar 20): deep 40min / 10%, HR 68, HRV avg 21ms max 40ms, score 81
+- Night 5 (Mar 21): deep 9min / 2%, HR 71, HRV avg 16ms max 26ms, score 75
+- Night 6 (Mar 22): deep 27min / 7%, HR 68, HRV avg 25ms max 37ms, score 75
+- Night 7 (Mar 23): deep 38min / 9%, HR lowest 68 avg 75, HRV avg 22ms max 42ms, score 81, total 6h53m
+- Night 8 (Mar 24, 100mg): deep 29min / 7%, HR lowest 68 avg 75, HRV avg 21ms max 35ms, score 77. Fragmented sleep, morning headache. 100mg too high.
+- Night 9 (Mar 25, back to 50mg): deep 22min / 5%, HR lowest 69 avg 77, HRV avg 20ms max 40ms, score 76. HR still elevated after 100mg.
+- Night 10 (Mar 26, 50mg): deep 74min / 20%, HR lowest 68 avg 74, HRV avg 26ms max 45ms, score 78. Best deep sleep of entire protocol. HRV recovering.
 
-RESTING HR CONTEXT: Baseline 58–62 bpm. Currently 68–75 bpm. Primary driver: Retatrutide glucagon chronotropy.
+CLINICAL OBSERVATIONS:
+- 100mg Trazodone clearly disrupted sleep — fragmented architecture, morning headaches, elevated HR. Reverted to 50mg.
+- Night 10 at 50mg showed dramatic improvement: 20% deep sleep, best HRV since baseline. 50mg appears to be the effective dose for now.
+- Resting HR elevated at 68–74 bpm vs baseline 58–62 bpm. Primary driver: Retatrutide glucagon chronotropy. This suppresses readiness scores. Without Retatrutide HR effect, readiness would likely be 80+.
+- Early wake times (05:00–05:30) appearing consistently — may be emerging as natural rhythm.
+- Morning headaches on 100mg Trazodone resolved on return to 50mg.
+
+RESTING HR CONTEXT: Baseline 58–62 bpm. Currently 68–74 bpm. Primary driver: Retatrutide. Not a safety concern at 1mg dose.
 
 BODY COMPOSITION (Mar 16): weight 78.7kg, body fat 26%, muscle 55.3kg, visceral fat 8. Goal: sub-20% BF, 75–76kg.
 
@@ -115,26 +125,12 @@ function renderInline(text) {
   })
 }
 
-function compressImage(file, maxDim = 1120, quality = 0.82) {
+function fileToBase64(file) {
   return new Promise((resolve, reject) => {
-    const img = new Image()
-    const url = URL.createObjectURL(file)
-    img.onload = () => {
-      URL.revokeObjectURL(url)
-      let { width, height } = img
-      if (width > maxDim || height > maxDim) {
-        if (width > height) { height = Math.round(height * maxDim / width); width = maxDim }
-        else { width = Math.round(width * maxDim / height); height = maxDim }
-      }
-      const canvas = document.createElement('canvas')
-      canvas.width = width
-      canvas.height = height
-      canvas.getContext('2d').drawImage(img, 0, 0, width, height)
-      const base64 = canvas.toDataURL('image/jpeg', quality).split(',')[1]
-      resolve({ base64, mediaType: 'image/jpeg', name: file.name })
-    }
-    img.onerror = reject
-    img.src = url
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result.split(',')[1])
+    reader.onerror = reject
+    reader.readAsDataURL(file)
   })
 }
 
@@ -160,7 +156,6 @@ async function extractAndSave(conversationMessages, attachedImages) {
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 500,
-        stream: false,
         system: EXTRACTION_SYSTEM,
         messages: extractMessages,
       }),
@@ -236,16 +231,8 @@ export default function Coach() {
   const [copiedMsgId, setCopiedMsgId] = useState(null)
   const [savedData, setSavedData]     = useState(null)
   const bottomRef                     = useRef(null)
-  const msgsRef                       = useRef(null)
   const inputRef                      = useRef(null)
   const fileRef                       = useRef(null)
-
-  const scrollToBottom = () => {
-    const el = msgsRef.current
-    if (!el) return
-    const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight
-    if (distFromBottom < 120) bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }
 
   useEffect(() => {
     fetchCoachMessages().then(rows => {
@@ -257,16 +244,16 @@ export default function Coach() {
   }, [])
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'instant' })
-  }, [loading])
-
-  useEffect(() => {
-    scrollToBottom()
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [msgs, thinking])
 
   const handleFiles = async (files) => {
     const selected = Array.from(files).slice(0, 10)
-    const processed = await Promise.all(selected.map(file => compressImage(file)))
+    const processed = await Promise.all(selected.map(async (file) => ({
+      base64: await fileToBase64(file),
+      mediaType: file.type,
+      name: file.name,
+    })))
     setImages(prev => [...prev, ...processed])
   }
 
@@ -305,58 +292,21 @@ export default function Coach() {
           messages: apiMessages,
         }),
       })
-
-      if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.error || 'API error')
-      }
-
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'API error')
+      const aiText = data.content?.[0]?.text || 'Error — try again.'
       const newMsgIdx = msgHistory.length
-      setMsgs(prev => [...prev, { role: 'ai', text: '' }])
-      setThinking(false)
 
-      const reader = res.body.getReader()
-      const decoder = new TextDecoder()
-      let fullText = ''
-      let buffer = ''
+      setMsgs(prev => [...prev, { role: 'ai', text: aiText }])
+      await insertCoachMessage('ai', aiText)
 
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n')
-        buffer = lines.pop()
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue
-          const data = line.slice(6).trim()
-          if (data === '[DONE]') continue
-          try {
-            const parsed = JSON.parse(data)
-            const delta = parsed.delta?.text || ''
-            if (delta) {
-              fullText += delta
-              setMsgs(prev => {
-                const updated = [...prev]
-                updated[updated.length - 1] = { role: 'ai', text: fullText }
-                return updated
-              })
-            }
-          } catch {}
+      extractAndSave(msgHistory, attachedImages).then(saved => {
+        if (saved) {
+          setSavedData({ idx: newMsgIdx, labels: saved })
+          setTimeout(() => setSavedData(null), 4000)
         }
-      }
-
-      if (fullText) {
-        await insertCoachMessage('ai', fullText)
-        extractAndSave(msgHistory, attachedImages).then(saved => {
-          if (saved) {
-            setSavedData({ idx: newMsgIdx, labels: saved })
-            setTimeout(() => setSavedData(null), 4000)
-          }
-        })
-      }
-
+      })
     } catch {
-      setThinking(false)
       setMsgs(prev => [...prev, { role: 'ai', text: 'CONNECTION_ERROR', isError: true }])
       setLastFailed({ msgHistory, attachedImages })
     }
@@ -376,7 +326,7 @@ export default function Coach() {
     setImages([])
     if (inputRef.current) inputRef.current.style.height = 'auto'
     const displayText = text || `[${attachedImages.length} photo${attachedImages.length > 1 ? 's' : ''}]`
-    const newMsgs = [...msgs, { role: 'user', text: displayText, images: attachedImages }]
+    const newMsgs = [...msgs, { role: 'user', text: displayText }]
     setMsgs(newMsgs)
     await insertCoachMessage('user', displayText)
     await sendPayload(newMsgs, attachedImages)
@@ -421,7 +371,7 @@ export default function Coach() {
 
   return (
     <div style={s.wrap}>
-      <div style={s.msgs} ref={msgsRef}>
+      <div style={s.msgs}>
         {msgs.map((m, i) => (
           <div key={i} style={{ alignSelf: m.role === 'ai' ? 'flex-start' : 'flex-end', maxWidth: '88%' }}>
             <div style={{ ...s.msg, ...(m.role === 'ai' ? s.msgAi : s.msgUser) }}>
@@ -430,20 +380,8 @@ export default function Coach() {
                   <div style={{ marginBottom: 8, color: TEXT2 }}>Connection error. Try again.</div>
                   <button onClick={() => send(lastFailed)} style={s.retryBtn}>↺ Retry</button>
                 </div>
-              ) : m.role === 'user' ? (
-                <div>
-                  {m.images && m.images.length > 0 && (
-                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
-                      {m.images.map((img, ii) => (
-                        <img key={ii} src={`data:${img.mediaType};base64,${img.base64}`}
-                          style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 8 }} alt="" />
-                      ))}
-                    </div>
-                  )}
-                  {m.text && !m.text.startsWith('[') && <div>{m.text}</div>}
-                </div>
               ) : (
-                renderText(m.text)
+                m.role === 'ai' ? renderText(m.text) : m.text
               )}
             </div>
 
