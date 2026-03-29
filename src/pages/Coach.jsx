@@ -221,7 +221,50 @@ const IconReport = () => (
   </svg>
 )
 
-export default function Coach({ refreshSleep, refreshBody, refreshBp, refreshLabs }) {
+function buildLiveDataContext(sleepLogs, bodyComp, labResults, bpLogs) {
+  const parts = []
+
+  if (sleepLogs?.length > 0) {
+    const recent = sleepLogs.slice(-14)
+    parts.push('LIVE SLEEP DATA (from Supabase, last ' + recent.length + ' nights):')
+    recent.forEach(s => {
+      const fields = [`date: ${s.date}`, `deep: ${s.deep_min}min/${s.deep_pct}%`]
+      if (s.rem_min != null || s.rem_pct != null) fields.push(`REM: ${s.rem_min ?? '?'}min/${s.rem_pct ?? '?'}%`)
+      if (s.score != null) fields.push(`score: ${s.score}`)
+      if (s.resting_hr != null) fields.push(`HR: ${s.resting_hr}bpm`)
+      if (s.hrv_ms != null) fields.push(`HRV: ${s.hrv_ms}ms`)
+      if (s.hrv_max_ms != null) fields.push(`HRV max: ${s.hrv_max_ms}ms`)
+      if (s.total_min != null) fields.push(`total: ${s.total_min}min`)
+      if (s.efficiency_pct != null) fields.push(`eff: ${s.efficiency_pct}%`)
+      if (s.notes) fields.push(`notes: ${s.notes}`)
+      parts.push('  ' + fields.join(' | '))
+    })
+  }
+
+  if (bodyComp?.length > 0) {
+    const latest = bodyComp[bodyComp.length - 1]
+    parts.push(`\nLATEST BODY COMPOSITION (${latest.date}): weight ${latest.weight_kg}kg, body fat ${latest.body_fat_pct}%, muscle ${latest.muscle_mass_kg}kg, visceral fat ${latest.visceral_fat}`)
+  }
+
+  if (labResults?.length > 0) {
+    parts.push('\nLAB RESULTS:')
+    labResults.forEach(l => {
+      parts.push(`  ${l.name}: ${l.value} ${l.unit || ''} (${l.status || 'ok'})`)
+    })
+  }
+
+  if (bpLogs?.length > 0) {
+    const recent = bpLogs.slice(0, 5)
+    parts.push('\nRECENT BP:')
+    recent.forEach(b => {
+      parts.push(`  ${b.date}: ${b.systolic}/${b.diastolic} pulse ${b.pulse}`)
+    })
+  }
+
+  return parts.length > 0 ? '\n\n--- LIVE DATABASE (auto-updated) ---\n' + parts.join('\n') : ''
+}
+
+export default function Coach({ refreshSleep, refreshBody, refreshBp, refreshLabs, sleepLogs, bodyComp, labResults, bpLogs }) {
   const [msgs, setMsgs]               = useState([INITIAL_MSG])
   const [input, setInput]             = useState('')
   const [thinking, setThinking]       = useState(false)
@@ -290,7 +333,7 @@ export default function Coach({ refreshSleep, refreshBody, refreshBp, refreshLab
           model: 'claude-sonnet-4-20250514',
           max_tokens: 2000,
           stream: false,
-          system: SYSTEM,
+          system: SYSTEM + buildLiveDataContext(sleepLogs, bodyComp, labResults, bpLogs),
           messages: apiMessages,
         }),
       })
