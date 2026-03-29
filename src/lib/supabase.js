@@ -141,18 +141,36 @@ export async function deleteReport(id) {
 }
 // ── Coach messages ────────────────────────────────────────────────────────────
 export async function fetchCoachMessages() {
-  const { data, error } = await supabase
-    .from('coach_messages')
-    .select('*')
-    .order('created_at', { ascending: true })
-    .limit(100)
-  if (error) { console.error('fetchCoachMessages:', error); return [] }
-  return data
+  try {
+    // Fetch latest 200 messages (descending), then reverse for chronological order
+    const { data, error } = await supabase
+      .from('coach_messages')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(200)
+    if (error) { console.error('[iHeal] fetchCoachMessages FAILED:', error); return [] }
+    const msgs = (data || []).reverse()
+    console.log(`[iHeal] fetchCoachMessages OK: ${msgs.length} messages loaded`)
+    return msgs
+  } catch (err) {
+    console.error('[iHeal] fetchCoachMessages EXCEPTION:', err)
+    return []
+  }
 }
 
 export async function insertCoachMessage(role, text) {
-  const { error } = await supabase
-    .from('coach_messages')
-    .insert({ role, text })
-  if (error) console.error('insertCoachMessage:', error)
+  try {
+    const { error } = await supabase
+      .from('coach_messages')
+      .insert({ role, text })
+    if (error) {
+      console.error('[iHeal] insertCoachMessage FAILED:', error)
+      return false
+    }
+    console.log('[iHeal] insertCoachMessage OK:', role, text.slice(0, 50))
+    return true
+  } catch (err) {
+    console.error('[iHeal] insertCoachMessage EXCEPTION:', err)
+    return false
+  }
 }

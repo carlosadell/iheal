@@ -319,12 +319,18 @@ export default function Coach({ refreshSleep, refreshBody, refreshBp, refreshLab
     setThinking(true)
     setLastFailed(null)
     try {
-      const apiMessages = msgHistory.map((m, i) => {
-        if (i === msgHistory.length - 1 && m.role === 'user' && attachedImages?.length > 0) {
+      // Only send last 20 messages to API to stay within context limits
+      const recentHistory = msgHistory.slice(-20)
+      const apiMessages = recentHistory.map((m, i) => {
+        if (i === recentHistory.length - 1 && m.role === 'user' && attachedImages?.length > 0) {
           return { role: 'user', content: buildContent(m.text, attachedImages) }
         }
         return { role: m.role === 'ai' ? 'assistant' : 'user', content: m.text }
       })
+      // Ensure first message is always from 'user' (API requirement)
+      while (apiMessages.length > 0 && apiMessages[0].role === 'assistant') {
+        apiMessages.shift()
+      }
 
       const res = await fetch('/api/chat', {
         method: 'POST',
