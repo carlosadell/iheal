@@ -174,3 +174,45 @@ export async function insertCoachMessage(role, text) {
     return false
   }
 }
+
+// ── Protocol items (Coach-editable) ────────────────────────────────────────
+export async function fetchProtocolItems() {
+  try {
+    const { data, error } = await supabase
+      .from('protocol_items')
+      .select('*')
+      .eq('active', true)
+      .order('sort_order', { ascending: true })
+    if (error) { console.error('[iHeal] fetchProtocolItems FAILED:', error); return [] }
+    return data || []
+  } catch (err) {
+    console.error('[iHeal] fetchProtocolItems EXCEPTION:', err)
+    return []
+  }
+}
+
+export async function upsertProtocolItem(item) {
+  try {
+    const { data, error } = await supabase
+      .from('protocol_items')
+      .upsert(item, { onConflict: 'key' })
+      .select()
+    if (error) { console.error('[iHeal] upsertProtocolItem FAILED:', error); return null }
+    return data?.[0]
+  } catch (err) {
+    console.error('[iHeal] upsertProtocolItem EXCEPTION:', err)
+    return null
+  }
+}
+
+export async function deactivateProtocolItem(key) {
+  try {
+    const { error } = await supabase
+      .from('protocol_items')
+      .update({ active: false })
+      .eq('key', key)
+    if (error) console.error('[iHeal] deactivateProtocolItem FAILED:', error)
+  } catch (err) {
+    console.error('[iHeal] deactivateProtocolItem EXCEPTION:', err)
+  }
+}

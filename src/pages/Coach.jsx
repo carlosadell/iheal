@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { fetchCoachMessages, insertCoachMessage, insertReport, insertSleepLog, insertBpLog, insertBodyComposition, upsertLabResult } from '../lib/supabase'
+import { fetchCoachMessages, insertCoachMessage, insertReport, insertSleepLog, insertBpLog, insertBodyComposition, upsertLabResult, upsertProtocolItem, deactivateProtocolItem } from '../lib/supabase'
 
 const GREEN  = '#c5f135'
 const CARD   = '#1e2128'
@@ -69,13 +69,14 @@ If no new health data was shared by the user, respond with exactly: {"none":true
 
 If health data was shared, extract it into this structure (only include fields that have actual data):
 
-{"sleep":{"date":"YYYY-MM-DD","deep_min":0,"deep_pct":0,"score":0,"resting_hr":0,"hrv_ms":0,"hrv_max_ms":0,"total_min":0,"rem_min":0,"rem_pct":0,"efficiency_pct":0,"latency_min":0},"bp":{"date":"YYYY-MM-DD","systolic":0,"diastolic":0,"pulse":0},"body":{"date":"YYYY-MM-DD","weight_kg":0,"body_fat_pct":0,"muscle_mass_kg":0,"visceral_fat":0},"labs":[{"name":"","value":"","unit":"","status":"ok"}]}
+{"sleep":{"date":"YYYY-MM-DD","deep_min":0,"deep_pct":0,"score":0,"resting_hr":0,"hrv_ms":0,"hrv_max_ms":0,"total_min":0,"rem_min":0,"rem_pct":0,"efficiency_pct":0,"latency_min":0},"bp":{"date":"YYYY-MM-DD","systolic":0,"diastolic":0,"pulse":0},"body":{"date":"YYYY-MM-DD","weight_kg":0,"body_fat_pct":0,"muscle_mass_kg":0,"visceral_fat":0},"labs":[{"name":"","value":"","unit":"","status":"ok"}],"protocol_updates":[{"action":"add|update|remove","key":"unique_key","category":"peptide|medication|supplement","name":"Name","dosage":"dose info","timing":"when to take","instructions":"how to take","icon":"emoji"}]}
 
 Rules:
 - Only extract data the USER explicitly shared. Never infer or estimate.
 - Remove any fields where the value is 0 or unknown.
 - Use today's date (${new Date().toISOString().slice(0,10)}) if no date was mentioned.
-- For sleep: deep_pct is the percentage (e.g. 7 not 0.07).`
+- For sleep: deep_pct is the percentage (e.g. 7 not 0.07).
+- For protocol updates: "add" creates a new item, "update" modifies an existing one, "remove" deactivates it. Only extract protocol changes when the user explicitly says they're starting, stopping, or changing a medication/supplement/peptide.`
 
 function parseJSON(raw) {
   if (!raw) return null
@@ -213,6 +214,27 @@ async function extractAndSave(conversationMessages, attachedImages) {
       }
       saved.push('lab results')
     }
+    if (parsed.protocol_updates?.length > 0) {
+      for (const update of parsed.protocol_updates) {
+        if (update.action === 'remove') {
+          await deactivateProtocolItem(update.key)
+        } else {
+          await upsertProtocolItem({
+            key: update.key,
+            category: update.category,
+            name: update.name,
+            dosage: update.dosage || '',
+            timing: update.timing || '',
+            instructions: update.instructions || '',
+            icon: update.icon || '💊',
+            active: true,
+            sort_order: update.category === 'peptide' ? 10 : update.category === 'medication' ? 20 : 30,
+          })
+        }
+        console.log('[iHeal] protocol update:', update.action, update.key)
+      }
+      saved.push('protocol')
+    }
 
     return saved.length > 0 ? saved : null
   } catch (err) {
@@ -280,7 +302,7 @@ function buildLiveDataContext(sleepLogs, bodyComp, labResults, bpLogs) {
   return parts.length > 0 ? '\n\n--- LIVE DATABASE (auto-updated) ---\n' + parts.join('\n') : ''
 }
 
-export default function Coach({ refreshSleep, refreshBody, refreshBp, refreshLabs, sleepLogs, bodyComp, labResults, bpLogs }) {
+export default function Coach({ refreshSleep, refreshBody, refreshBp, refreshLabs, refreshProtocolItems, sleepLogs, bodyComp, labResults, bpLogs }) {
   const [msgs, setMsgs]               = useState([INITIAL_MSG])
   const [input, setInput]             = useState('')
   const [thinking, setThinking]       = useState(false)
@@ -376,6 +398,7 @@ export default function Coach({ refreshSleep, refreshBody, refreshBp, refreshLab
           if (saved.includes('body composition') && refreshBody) refreshBody()
           if (saved.includes('blood pressure') && refreshBp) refreshBp()
           if (saved.includes('lab results') && refreshLabs) refreshLabs()
+          if (saved.includes('protocol') && refreshProtocolItems) refreshProtocolItems()
           // Invalidate Home alert cache so it regenerates with new data
           const today = new Date().toISOString().slice(0, 10)
           localStorage.removeItem(`iheal_alert_${today}`)

@@ -5,7 +5,7 @@ const G='#c5f135', CARD='#1e2128', BORDER='#2a2e38'
 const T='#fff', T2='#b0b4c0', T3='#6a6e7a', FD="'Bebas Neue',sans-serif"
 const card = {background:CARD,borderRadius:14,border:`1px solid ${BORDER}`,overflow:'hidden',margin:'0 16px'}
 
-export default function Settings({setPage}) {
+export default function Settings() {
   const [goals, setGoals] = useState({
     weight: '75–76 kg', bodyFat: 'Sub-20%', deepSleep: '15%+',
     calories: '1,950 kcal', protein: '170g', fat: '110–120g', carbs: '50–70g',
@@ -37,9 +37,13 @@ export default function Settings({setPage}) {
 
   return (
     <div style={{background:'#000',minHeight:'100%'}}>
-      <div style={{display:'flex',alignItems:'center',gap:6,padding:'14px 16px 6px',cursor:'pointer'}} onClick={()=>setPage('profile')}>
-        <span style={{fontSize:22,color:G,lineHeight:1}}>‹</span>
-        <span style={{fontSize:15,color:G,fontWeight:500}}>Profile</span>
+      <div style={{position:'relative',overflow:'hidden',background:'linear-gradient(160deg,#0d1200 0%,#000 55%)'}}>
+        <div style={{position:'absolute',inset:0,background:'linear-gradient(to bottom,transparent 10%,#000 100%)'}}/>
+        <div style={{position:'absolute',inset:0,background:'radial-gradient(ellipse at 70% 30%,rgba(197,241,53,.08) 0%,transparent 65%)'}}/>
+        <div style={{position:'relative',padding:'16px 18px 14px'}}>
+          <div style={{fontSize:12,fontWeight:600,color:G,letterSpacing:'2.5px',textTransform:'uppercase',marginBottom:3}}>Configuration</div>
+          <div style={{fontFamily:FD,fontSize:42,letterSpacing:1,lineHeight:1,color:'#fff'}}>SETTINGS</div>
+        </div>
       </div>
 
       <div style={{fontFamily:FD,fontSize:14,letterSpacing:2,color:T,padding:'8px 16px 9px',textTransform:'uppercase'}}>Personal</div>

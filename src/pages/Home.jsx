@@ -66,10 +66,9 @@ NEXT: [2-3 short action items or warnings separated by " · " — what to do, wa
 
 No bullet points. No markdown. No greetings. No extra text. Be specific and use actual context from the conversation.`
 
-export default function Home({sleepLogs, protocol, supplements, togProto, togSupp, setPage, profile, time, todayStr, dayNum}) {
+export default function Home({sleepLogs, protocolItems, setPage, profile, time, todayStr, dayNum}) {
   const last = sleepLogs[sleepLogs.length-1] || {}
-  const doneProt = protocol.filter(p=>p.done).length + supplements.filter(s=>s.done).length
-  const totalProt = protocol.length + supplements.length
+  const totalProt = (protocolItems || []).length
   const sleepChart = sleepLogs.map(s => ({v:s.deep_pct, d:parseInt(s.date.slice(8))+'M'}))
 
   const trazStart = new Date('2026-03-17')
@@ -202,12 +201,12 @@ export default function Home({sleepLogs, protocol, supplements, togProto, togSup
       </div>
 
       {/* TODAY'S PROTOCOL */}
-      {sec("Today's Protocol", `${doneProt}/${totalProt} done`)}
+      {sec("Your Protocol", `${totalProt} items`)}
       <div style={{...card,cursor:'pointer'}} onClick={()=>setPage('protocol')}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'14px 16px'}}>
           <div>
-            <div style={{fontSize:14,fontWeight:500,color:T}}>Check your daily peptides &amp; supplements</div>
-            <div style={{fontSize:11,color:T2,marginTop:2}}>{doneProt} of {totalProt} items marked done today</div>
+            <div style={{fontSize:14,fontWeight:500,color:T}}>View your peptides, meds &amp; supplements</div>
+            <div style={{fontSize:11,color:T2,marginTop:2}}>{totalProt} active items in your protocol</div>
           </div>
           <div style={{fontSize:20,color:T3}}>›</div>
         </div>
