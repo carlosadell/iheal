@@ -86,7 +86,8 @@ Rules:
 - Remove any fields where the value is 0 or unknown.
 - Use today's date (${new Date().toISOString().slice(0,10)}) if no date was mentioned.
 - For sleep: deep_pct is the percentage (e.g. 7 not 0.07).
-- For protocol updates: "add" creates a new item, "update" modifies an existing one, "remove" deactivates it. Only extract protocol changes when the user explicitly says they're starting, stopping, or changing a medication/supplement/peptide.`
+- For protocol updates: "add" creates a new item, "update" modifies an existing one, "remove" deactivates it. Only extract protocol changes when the user explicitly says they're starting, stopping, or changing a medication/supplement/peptide.
+- IMPORTANT for "update" actions: include ALL fields with their complete values, not just the changed field. Preserve the full name (including translations like "Триттико"), detailed instructions, timing, etc. Only change the field the user actually modified. If the user says "I now take 25mg Trazodone", the update should still include the full name "Trazodone (Триттико)", the existing timing "Before bed", and the existing detailed instructions — only changing dosage to "25mg".`
 
 function parseJSON(raw) {
   if (!raw) return null
@@ -229,16 +230,18 @@ async function extractAndSave(conversationMessages, attachedImages) {
         if (update.action === 'remove') {
           await deactivateProtocolItem(update.key)
         } else {
+          // Merge with existing item so partial updates don't blank out fields
+          const existing = (protocolItems || []).find(p => p.key === update.key) || {}
           await upsertProtocolItem({
             key: update.key,
-            category: update.category,
-            name: update.name,
-            dosage: update.dosage || '',
-            timing: update.timing || '',
-            instructions: update.instructions || '',
-            icon: update.icon || '💊',
+            category: update.category || existing.category || 'supplement',
+            name: update.name || existing.name || '',
+            dosage: update.dosage || existing.dosage || '',
+            timing: update.timing || existing.timing || '',
+            instructions: update.instructions || existing.instructions || '',
+            icon: update.icon || existing.icon || '💊',
             active: true,
-            sort_order: update.category === 'peptide' ? 10 : update.category === 'medication' ? 20 : 30,
+            sort_order: existing.sort_order || (update.category === 'peptide' ? 10 : update.category === 'medication' ? 20 : 30),
           })
         }
         console.log('[iHeal] protocol update:', update.action, update.key)
@@ -312,7 +315,7 @@ function buildLiveDataContext(sleepLogs, bodyComp, labResults, bpLogs) {
   return parts.length > 0 ? '\n\n--- LIVE DATABASE (auto-updated) ---\n' + parts.join('\n') : ''
 }
 
-export default function Coach({ refreshSleep, refreshBody, refreshBp, refreshLabs, refreshProtocolItems, sleepLogs, bodyComp, labResults, bpLogs }) {
+export default function Coach({ refreshSleep, refreshBody, refreshBp, refreshLabs, refreshProtocolItems, protocolItems, sleepLogs, bodyComp, labResults, bpLogs }) {
   const [msgs, setMsgs]               = useState([INITIAL_MSG])
   const [input, setInput]             = useState('')
   const [thinking, setThinking]       = useState(false)
