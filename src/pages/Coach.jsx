@@ -30,17 +30,21 @@ DIET: Carnivore-based + one potato at dinner. Targets: 1,950 kcal, 150–170g pr
 SLEEP BASELINE (pre-Trazodone):
 Resting HR during sleep: 58–62 bpm. HRV range: 24–34ms. Deep sleep ranged 6–13% across March 9–16.
 
-SLEEP LOG (Trazodone nights):
-- Night 1 (Mar 17): deep 14min / 3%, HR 66, HRV 28ms, score 76
-- Night 2 (Mar 18): deep 9min / 2%, HR 69, HRV 22ms, score 75
-- Night 3 (Mar 19): deep 41min / 11%, HR 66, HRV 22ms, score 74
-- Night 4 (Mar 20): deep 40min / 10%, HR 68, HRV avg 21ms max 40ms, score 81
-- Night 5 (Mar 21): deep 9min / 2%, HR 71, HRV avg 16ms max 26ms, score 75
-- Night 6 (Mar 22): deep 27min / 7%, HR 68, HRV avg 25ms max 37ms, score 75
-- Night 7 (Mar 23): deep 38min / 9%, HR lowest 68 avg 75, HRV avg 22ms max 42ms, score 81, total 6h53m
-- Night 8 (Mar 24, 100mg): deep 29min / 7%, HR lowest 68 avg 75, HRV avg 21ms max 35ms, score 77. Fragmented sleep, morning headache. 100mg too high.
-- Night 9 (Mar 25, back to 50mg): deep 22min / 5%, HR lowest 69 avg 77, HRV avg 20ms max 40ms, score 76. HR still elevated after 100mg.
-- Night 10 (Mar 26, 50mg): deep 74min / 20%, HR lowest 68 avg 74, HRV avg 26ms max 45ms, score 78. Best deep sleep of entire protocol. HRV recovering.
+COMPLETE SLEEP LOG (Trazodone nights):
+- Night 1 (Mar 17): 50mg, deep 14min/3%, resting HR 66, HRV 28ms, score 76
+- Night 2 (Mar 18): 50mg, deep 9min/2%, resting HR 69, HRV 22ms, score 75
+- Night 3 (Mar 19): 50mg, deep 41min/11%, resting HR 66, HRV 22ms, score 74
+- Night 4 (Mar 20): 50mg, deep 40min/10%, resting HR 68, HRV avg 21ms max 40ms, score 81
+- Night 5 (Mar 21): 50mg, deep 9min/2%, resting HR 71, HRV avg 16ms max 26ms, score 75
+- Night 6 (Mar 22): 50mg, deep 27min/7%, resting HR 68, HRV avg 25ms max 37ms, score 75
+- Night 7 (Mar 23): 50mg, deep 38min/9%, resting HR 68, avg HR 75, HRV avg 22ms max 42ms, score 81
+- Night 8 (Mar 24): 100mg, deep 38min/9%, resting HR 68, HRV 22ms, score 77
+- Night 9 (Mar 25): deep 22min/5%, resting HR 69, avg HR 77, HRV avg 20ms max 40ms, score 76
+- Night 10 (Mar 26): deep 74min/20%, resting HR 68, avg HR 74, HRV avg 26ms max 45ms, score 78
+- Night 11 (Mar 28): late bedtime 23:52, deep 33min/10%, resting HR 69, avg HR 79, HRV avg 22ms max 44ms, score 68
+- Night 12 (Mar 29): 25mg only, deep 64min/15%, resting HR 67, avg HR 74, HRV avg 30ms max 48ms, score 83 — best night of protocol
+- Night 13 (Mar 30): deep 62min/15%, resting HR 66, avg HR 74, HRV avg 30ms max 57ms, score 79, bedtime 21:57
+KEY PATTERNS: Early bedtime before 22:30 produces deep sleep 15%+ and resting HR closer to baseline 58-62 bpm. Lowest dose 25mg produced best night. Resting HR trending down toward baseline. HRV max 57ms on Night 13 is highest of entire protocol.
 
 CLINICAL OBSERVATIONS:
 - 100mg Trazodone clearly disrupted sleep — fragmented architecture, morning headaches, elevated HR. Reverted to 50mg.
@@ -51,7 +55,7 @@ CLINICAL OBSERVATIONS:
 
 RESTING HR CONTEXT: Baseline 58–62 bpm. Currently 68–74 bpm. Primary driver: Retatrutide. Not a safety concern at 1mg dose.
 
-BODY COMPOSITION (Mar 16): weight 78.7kg, body fat 26%, muscle 55.3kg, visceral fat 8. Goal: sub-20% BF, 75–76kg.
+BODY COMPOSITION: First measurement Mar 9 at 79.10kg. Current Mar 31 at 77.20kg. Loss 1.9kg over 22 days. Goal sub-20% BF. Retatrutide started March 2, 2026.
 
 LABS: ApoB 82, fasting insulin 4.2, homocysteine 11.2 (elevated), GGT 22, Vitamin D3 114.7 (high). Pending: CRP, HbA1c, transferrin saturation.
 
@@ -125,12 +129,24 @@ function renderInline(text) {
   })
 }
 
-function fileToBase64(file) {
+async function compressAndEncode(file) {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result.split(',')[1])
-    reader.onerror = reject
-    reader.readAsDataURL(file)
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+    img.onload = () => {
+      const MAX = 800
+      const scale = Math.min(1, MAX / Math.max(img.width, img.height))
+      const w = Math.round(img.width * scale)
+      const h = Math.round(img.height * scale)
+      const canvas = document.createElement('canvas')
+      canvas.width = w
+      canvas.height = h
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h)
+      URL.revokeObjectURL(url)
+      resolve(canvas.toDataURL('image/jpeg', 0.7).split(',')[1])
+    }
+    img.onerror = reject
+    img.src = url
   })
 }
 
@@ -294,7 +310,7 @@ export default function Coach({ refreshSleep, refreshBody, refreshBp, refreshLab
   const handleFiles = async (files) => {
     const selected = Array.from(files).slice(0, 10)
     const processed = await Promise.all(selected.map(async (file) => ({
-      base64: await fileToBase64(file),
+      base64: await compressAndEncode(file),
       mediaType: file.type,
       name: file.name,
     })))
