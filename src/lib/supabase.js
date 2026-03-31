@@ -32,44 +32,7 @@ export async function patchMissingSleepHRV() {
   }
 }
 
-export async function patchCorruptedSleepData() {
-  // Fix 1: March 30 Night 13 data was overwritten by date-confused Coach extraction
-  const { data } = await supabase
-    .from('sleep_logs')
-    .select('deep_pct')
-    .eq('date', '2026-03-30')
-    .single()
-  if (data && data.deep_pct !== 15) {
-    await supabase
-      .from('sleep_logs')
-      .update({ deep_min: 62, deep_pct: 15, score: 79, resting_hr: 66, hrv_ms: 30, hrv_max_ms: 57 })
-      .eq('date', '2026-03-30')
-    console.log('[iHeal] patched corrupted March 30 sleep data')
-  }
-
-  // Fix 2: Delete any sleep records dated today or in the future
-  // Sleep data is always for "last night" so the latest valid date is yesterday
-  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
-  const { data: futureRows } = await supabase
-    .from('sleep_logs')
-    .select('date')
-    .gt('date', yesterday)
-  if (futureRows && futureRows.length > 0) {
-    await supabase
-      .from('sleep_logs')
-      .delete()
-      .gt('date', yesterday)
-    console.log('[iHeal] deleted future-dated sleep records:', futureRows.map(r => r.date))
-  }
-}
-
 export async function insertSleepLog(log) {
-  // Guard: sleep data can never be for today or future — it's always last night or earlier
-  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
-  if (log.date > yesterday) {
-    console.warn('[iHeal] blocked sleep log with future date:', log.date, '(latest valid:', yesterday + ')')
-    log.date = yesterday
-  }
   const { data, error } = await supabase
     .from('sleep_logs')
     .upsert(log, { onConflict: 'date' })

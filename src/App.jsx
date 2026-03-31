@@ -7,7 +7,7 @@ import Settings from './pages/Settings'
 import { seedProfile, recommendedNextLabs } from './data/seed'
 import {
   fetchSleepLogs, fetchBodyComposition, fetchMacroLogs,
-  fetchLabResults, fetchBpLogs, fetchProtocolItems, patchMissingSleepHRV, patchCorruptedSleepData
+  fetchLabResults, fetchBpLogs, fetchProtocolItems, patchMissingSleepHRV
 } from './lib/supabase'
 
 const NAV = [
@@ -55,7 +55,6 @@ export default function App() {
   useEffect(() => {
     async function loadAll() {
       await patchMissingSleepHRV()
-      await patchCorruptedSleepData()
       const [sleep, body, macros, labs, bp, protoItems] = await Promise.all([
         fetchSleepLogs(),
         fetchBodyComposition(),
