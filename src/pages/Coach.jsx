@@ -8,10 +8,15 @@ const TEXT2  = '#b0b4c0'
 
 const INITIAL_MSG = { role: 'ai', text: "I'm your iHeal AI Coach. I have your full health context loaded. Share Oura screenshots, RENPHO scans, lab results, or ask anything." }
 
-const TODAY = new Date().toISOString().slice(0, 10)
-const YESTERDAY = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
+function getDateContext() {
+  const today = new Date().toISOString().slice(0, 10)
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
+  return { today, yesterday }
+}
 
-const SYSTEM = `TODAY'S DATE: ${TODAY}. Yesterday was ${YESTERDAY}. NEVER guess or invent dates. When Carlos shares sleep or health screenshots (Oura, RENPHO, etc.), the data is from LAST NIGHT (${YESTERDAY}) unless he explicitly states otherwise. Never use a future date. If you are unsure of a date, ask — do not assume.
+function buildSystemPrompt() {
+  const { today, yesterday } = getDateContext()
+  return `TODAY'S DATE: ${today}. Yesterday was ${yesterday}. NEVER guess or invent dates. When Carlos shares sleep or health screenshots (Oura, RENPHO, etc.), the data is from LAST NIGHT (${yesterday}) unless he explicitly states otherwise. Never use a future date. If you are unsure of a date, ask — do not assume.
 
 You are Carlos's personal AI health coach inside iHeal. Think and respond exactly as you would in a normal Claude conversation — use your full reasoning, knowledge, and analytical capabilities without restriction. Carlos is Spanish, 45 years old, entrepreneur, based in Saint Petersburg, Russia.
 
@@ -75,10 +80,13 @@ You live inside the iHeal app. Understanding the app helps you guide Carlos to t
 - SETTINGS: App preferences and goal configuration.
 
 When Carlos shares health data (Oura screenshots, RENPHO scans, labs, BP readings), you extract it and it flows to the relevant pages automatically. If he asks "where can I see my sleep data?" point him to Home. If he asks about his medications, point him to Protocol. If he tells you about a dosage change, confirm you've updated Protocol.`
+}
 
-const EXTRACTION_SYSTEM = `You are a health data extractor. Your job is to extract structured health data from a conversation.
+function buildExtractionPrompt() {
+  const { today, yesterday } = getDateContext()
+  return `You are a health data extractor. Your job is to extract structured health data from a conversation.
 
-TODAY'S DATE: ${TODAY}. Yesterday was ${YESTERDAY}. When the user shares sleep screenshots or overnight health data, the date is ${YESTERDAY} (last night) unless they explicitly state a different date. NEVER use a future date. NEVER guess dates — use ${TODAY} for same-day data and ${YESTERDAY} for overnight/sleep data.
+TODAY'S DATE: ${today}. Yesterday was ${yesterday}. When the user shares sleep screenshots or overnight health data, the date is ${yesterday} (last night) unless they explicitly state a different date. NEVER use a future date. NEVER guess dates — use ${today} for same-day data and ${yesterday} for overnight/sleep data.
 
 CRITICAL: Respond with ONLY a raw JSON object. No markdown. No code fences. No explanation. No preamble. The very first character of your response must be { and the very last must be }.
 
@@ -91,10 +99,11 @@ If health data was shared, extract it into this structure (only include fields t
 Rules:
 - Only extract data the USER explicitly shared. Never infer or estimate.
 - Remove any fields where the value is 0 or unknown.
-- For sleep/overnight data, use yesterday's date (${YESTERDAY}). For same-day data (BP, weight, labs), use today's date (${TODAY}). NEVER use a future date.
+- For sleep/overnight data, use yesterday's date (${yesterday}). For same-day data (BP, weight, labs), use today's date (${today}). NEVER use a future date.
 - For sleep: deep_pct is the percentage (e.g. 7 not 0.07).
 - For protocol updates: "add" creates a new item, "update" modifies an existing one, "remove" deactivates it. Only extract protocol changes when the user explicitly says they're starting, stopping, or changing a medication/supplement/peptide.
 - IMPORTANT for "update" actions: include ALL fields with their complete values, not just the changed field. Preserve the full name (including translations like "Триттико"), detailed instructions, timing, etc. Only change the field the user actually modified. If the user says "I now take 25mg Trazodone", the update should still include the full name "Trazodone (Триттико)", the existing timing "Before bed", and the existing detailed instructions — only changing dosage to "25mg".`
+}
 
 function parseJSON(raw) {
   if (!raw) return null
@@ -192,7 +201,7 @@ async function extractAndSave(conversationMessages, attachedImages) {
         model: 'claude-sonnet-4-20250514',
         max_tokens: 500,
         stream: false,
-        system: EXTRACTION_SYSTEM,
+        system: buildExtractionPrompt(),
         messages: extractMessages,
       }),
     })
@@ -397,7 +406,7 @@ export default function Coach({ refreshSleep, refreshBody, refreshBp, refreshLab
           model: 'claude-sonnet-4-20250514',
           max_tokens: 2000,
           stream: false,
-          system: SYSTEM + buildLiveDataContext(sleepLogs, bodyComp, labResults, bpLogs),
+          system: buildSystemPrompt() + buildLiveDataContext(sleepLogs, bodyComp, labResults, bpLogs),
           messages: apiMessages,
         }),
       })
