@@ -395,7 +395,11 @@ export default function Coach({ refreshSleep, refreshBody, refreshBp, refreshLab
         }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'API error')
+      if (!res.ok) {
+        const errMsg = data?.error?.message || data?.error || `API error (${res.status})`
+        console.error('[iHeal] API error:', res.status, data)
+        throw new Error(errMsg)
+      }
       const aiText = data.content?.[0]?.text || 'Error — try again.'
       const newMsgIdx = msgHistory.length
 
@@ -437,7 +441,8 @@ export default function Coach({ refreshSleep, refreshBody, refreshBp, refreshLab
     setImages([])
     if (inputRef.current) inputRef.current.style.height = 'auto'
     const displayText = text || `[${attachedImages.length} photo${attachedImages.length > 1 ? 's' : ''}]`
-    const newMsgs = [...msgs, { role: 'user', text: displayText }]
+    const thumbs = attachedImages.length > 0 ? attachedImages.map(img => `data:${img.mediaType};base64,${img.base64}`) : null
+    const newMsgs = [...msgs, { role: 'user', text: displayText, images: thumbs }]
     setMsgs(newMsgs)
     await insertCoachMessage('user', displayText)
     await sendPayload(newMsgs, attachedImages)
@@ -492,7 +497,16 @@ export default function Coach({ refreshSleep, refreshBody, refreshBp, refreshLab
                   <button onClick={() => send(lastFailed)} style={s.retryBtn}>↺ Retry</button>
                 </div>
               ) : (
-                m.role === 'ai' ? renderText(m.text) : m.text
+                <>
+                  {m.images && m.images.length > 0 && (
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: m.text && !m.text.startsWith('[') ? 8 : 0 }}>
+                      {m.images.map((src, j) => (
+                        <img key={j} src={src} alt="" style={{ width: 120, height: 120, objectFit: 'cover', borderRadius: 10, border: `1px solid ${BORDER}` }} />
+                      ))}
+                    </div>
+                  )}
+                  {m.role === 'ai' ? renderText(m.text) : (m.text && !m.text.startsWith('[') ? m.text : (!m.images ? m.text : null))}
+                </>
               )}
             </div>
 

@@ -38,7 +38,13 @@ export default function handler(req, res) {
       let data = ''
       response.on('data', (chunk) => { data += chunk })
       response.on('end', () => {
-        try { res.status(200).json(JSON.parse(data)) }
+        try {
+          const parsed = JSON.parse(data)
+          if (response.statusCode !== 200) {
+            console.error('[chat.mjs] Anthropic API error:', response.statusCode, data)
+          }
+          res.status(response.statusCode).json(parsed)
+        }
         catch (e) { res.status(500).json({ error: 'Parse error: ' + e.message }) }
       })
     }
