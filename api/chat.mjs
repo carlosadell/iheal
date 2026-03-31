@@ -41,13 +41,14 @@ export default function handler(req, res) {
         try {
           const parsed = JSON.parse(data)
           if (response.statusCode !== 200) {
-            console.error('[chat.mjs] STATUS:', response.statusCode)
-            console.error('[chat.mjs] ERROR_TYPE:', parsed?.error?.type || 'unknown')
-            console.error('[chat.mjs] ERROR_MSG:', parsed?.error?.message || data.slice(0, 500))
+            const errInfo = `${response.statusCode} ${parsed?.error?.type || 'unknown'}: ${parsed?.error?.message || 'no message'}`
+            console.error('[chat.mjs]', errInfo)
+            res.status(response.statusCode).json({ error: errInfo, raw: parsed })
+          } else {
+            res.status(200).json(parsed)
           }
-          res.status(response.statusCode).json(parsed)
         }
-        catch (e) { res.status(500).json({ error: 'Parse error: ' + e.message }) }
+        catch (e) { res.status(500).json({ error: 'Parse error: ' + e.message, raw: data.slice(0, 300) }) }
       })
     }
   })

@@ -421,8 +421,9 @@ export default function Coach({ refreshSleep, refreshBody, refreshBp, refreshLab
           localStorage.removeItem(`iheal_alert_${today}`)
         }
       })
-    } catch {
-      setMsgs(prev => [...prev, { role: 'ai', text: 'CONNECTION_ERROR', isError: true }])
+    } catch (err) {
+      console.error('[iHeal] send error:', err)
+      setMsgs(prev => [...prev, { role: 'ai', text: 'CONNECTION_ERROR', errorDetail: err.message || 'Unknown error', isError: true }])
       setLastFailed({ msgHistory, attachedImages })
     }
     setThinking(false)
@@ -493,7 +494,8 @@ export default function Coach({ refreshSleep, refreshBody, refreshBp, refreshLab
             <div style={{ ...s.msg, ...(m.role === 'ai' ? s.msgAi : s.msgUser) }}>
               {m.isError ? (
                 <div>
-                  <div style={{ marginBottom: 8, color: TEXT2 }}>Connection error. Try again.</div>
+                  <div style={{ marginBottom: 4, color: TEXT2 }}>Connection error. Try again.</div>
+                  {m.errorDetail && <div style={{ fontSize: 11, color: '#ff6b6b', marginBottom: 8, wordBreak: 'break-word' }}>{m.errorDetail}</div>}
                   <button onClick={() => send(lastFailed)} style={s.retryBtn}>↺ Retry</button>
                 </div>
               ) : (
