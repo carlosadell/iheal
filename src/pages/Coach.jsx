@@ -346,7 +346,7 @@ export default function Coach({ refreshSleep, refreshBody, refreshBp, refreshLab
     const selected = Array.from(files).slice(0, 10)
     const processed = await Promise.all(selected.map(async (file) => ({
       base64: await compressAndEncode(file),
-      mediaType: file.type,
+      mediaType: 'image/jpeg',
       name: file.name,
     })))
     setImages(prev => [...prev, ...processed])

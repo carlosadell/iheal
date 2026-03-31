@@ -15,6 +15,23 @@ export async function fetchSleepLogs() {
   return data
 }
 
+export async function patchMissingSleepHRV() {
+  // One-time fix: patch rows where hrv_ms is null but data is known
+  const patches = [
+    { date: '2026-03-30', hrv_ms: 30, hrv_max_ms: 57 },
+    { date: '2026-03-29', hrv_ms: 30, hrv_max_ms: 48 },
+    { date: '2026-03-28', hrv_ms: 22, hrv_max_ms: 44 },
+    { date: '2026-03-26', hrv_ms: 26, hrv_max_ms: 45 },
+  ]
+  for (const p of patches) {
+    await supabase
+      .from('sleep_logs')
+      .update({ hrv_ms: p.hrv_ms, hrv_max_ms: p.hrv_max_ms })
+      .eq('date', p.date)
+      .is('hrv_ms', null)
+  }
+}
+
 export async function insertSleepLog(log) {
   const { data, error } = await supabase
     .from('sleep_logs')
