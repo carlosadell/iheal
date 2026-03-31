@@ -184,7 +184,7 @@ export default function Home({sleepLogs, protocolItems, setPage, profile, time, 
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,padding:'0 16px'}}>
         <MetricCard label="Deep Sleep" value={last.deep_min} unit="m" sub={`${last.deep_pct}% of total`} delta={`Night ${trazDay+1}`} deltaType="ok"/>
         <MetricCard label="Sleep Score" value={last.score} sub={`Trazodone wk${trazWeek}`} delta={scoreLabel} deltaType={scoreType}/>
-        <MetricCard label="HRV Avg" value={last.hrv_ms} unit="ms" sub={`Max ${last.hrv_max_ms||''}ms`} delta="stable" deltaType="ok"/>
+        <MetricCard label="HRV Avg" value={last.hrv_ms || '—'} unit={last.hrv_ms ? 'ms' : ''} sub={last.hrv_max_ms ? `Max ${last.hrv_max_ms}ms` : 'No data'} delta="stable" deltaType="ok"/>
         <MetricCard label="Resting HR" value={last.resting_hr} unit="bpm" sub="Baseline 58–62 bpm" delta="watch trend" deltaType="warn"/>
       </div>
 

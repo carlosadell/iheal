@@ -41,7 +41,9 @@ export default function handler(req, res) {
         try {
           const parsed = JSON.parse(data)
           if (response.statusCode !== 200) {
-            console.error('[chat.mjs] Anthropic API error:', response.statusCode, data)
+            console.error('[chat.mjs] STATUS:', response.statusCode)
+            console.error('[chat.mjs] ERROR_TYPE:', parsed?.error?.type || 'unknown')
+            console.error('[chat.mjs] ERROR_MSG:', parsed?.error?.message || data.slice(0, 500))
           }
           res.status(response.statusCode).json(parsed)
         }
