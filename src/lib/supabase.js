@@ -32,6 +32,23 @@ export async function patchMissingSleepHRV() {
   }
 }
 
+export async function patchCorruptedSleepData() {
+  // Fix: March 30 Night 13 data was overwritten by date-confused Coach extraction
+  // Correct values from Oura: deep 62min/15%, score 79, resting HR 66, HRV 30/57ms
+  const { data } = await supabase
+    .from('sleep_logs')
+    .select('deep_pct')
+    .eq('date', '2026-03-30')
+    .single()
+  if (data && data.deep_pct !== 15) {
+    await supabase
+      .from('sleep_logs')
+      .update({ deep_min: 62, deep_pct: 15, score: 79, resting_hr: 66, hrv_ms: 30, hrv_max_ms: 57 })
+      .eq('date', '2026-03-30')
+    console.log('[iHeal] patched corrupted March 30 sleep data')
+  }
+}
+
 export async function insertSleepLog(log) {
   const { data, error } = await supabase
     .from('sleep_logs')
