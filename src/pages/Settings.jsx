@@ -90,17 +90,6 @@ export default function Settings() {
         ))}
       </div>
 
-      <div style={{fontFamily:FD,fontSize:14,letterSpacing:2,color:T,padding:'13px 16px 9px',textTransform:'uppercase'}}>Data</div>
-      <div style={card}>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 16px',borderBottom:`1px solid ${BORDER}`}}>
-          <span style={{fontSize:14,color:T}}>Export all data</span>
-          <span style={{fontSize:12,color:G,fontWeight:600,cursor:'pointer'}}>Export ↗</span>
-        </div>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 16px'}}>
-          <span style={{fontSize:14,color:T}}>Sync with Supabase</span>
-          <span style={{fontSize:12,color:G,fontWeight:600,cursor:'pointer'}}>Coming soon</span>
-        </div>
-      </div>
       <div style={{height:24}}/>
     </div>
   )

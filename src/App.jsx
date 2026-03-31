@@ -120,7 +120,7 @@ export default function App() {
         {page==='home'     && <Home     {...shared}/>}
         {page==='protocol' && <Protocol {...shared}/>}
         {page==='coach'    && <Coach    {...shared}/>}
-        {page==='profile'  && <Profile  {...shared} setPage={setPage}/>}
+        {page==='profile'  && <Profile  {...shared}/>}
         {page==='settings' && <Settings {...shared}/>}
       </div>
 

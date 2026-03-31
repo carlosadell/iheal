@@ -23,7 +23,7 @@ function MetricCard({label,value,unit,sub,delta,deltaType}) {
   )
 }
 
-export default function Profile({bodyComp, labResults, nextLabs, profile, setPage}) {
+export default function Profile({bodyComp, labResults, nextLabs, profile}) {
   const latest     = bodyComp[bodyComp.length-1] || {}
   const latestDate = latest?.date?.slice(0,10)
 
@@ -74,18 +74,6 @@ export default function Profile({bodyComp, labResults, nextLabs, profile, setPag
             <span style={{fontSize:13,color:T2,lineHeight:1.4}}>{l}</span>
           </div>
         ))}
-      </div>
-
-      {/* Settings */}
-      <div style={{padding:'13px 16px 8px',fontFamily:FD,fontSize:14,letterSpacing:2,color:T,textTransform:'uppercase'}}>Account</div>
-      <div style={{...card,cursor:'pointer'}} onClick={()=>setPage('settings')}>
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'14px 16px'}}>
-          <div style={{display:'flex',alignItems:'center',gap:11}}>
-            <div style={{width:32,height:32,borderRadius:8,background:CARD3,border:`1px solid ${BORDER}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:14}}>⚙️</div>
-            <span style={{fontSize:14,fontWeight:500,color:T}}>Settings &amp; Goals</span>
-          </div>
-          <div style={{fontSize:20,color:T3}}>›</div>
-        </div>
       </div>
 
       <div style={{height:24}}/>
