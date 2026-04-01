@@ -9,14 +9,19 @@ const TEXT2  = '#b0b4c0'
 const INITIAL_MSG = { role: 'ai', text: "I'm your iHeal AI Coach. I have your full health context loaded. Share Oura screenshots, RENPHO scans, lab results, or ask anything." }
 
 function getDateContext() {
-  const today = new Date().toISOString().slice(0, 10)
+  const now = new Date()
+  const today = now.toISOString().slice(0, 10)
   const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
-  return { today, yesterday }
+  const hours = now.getHours()
+  const mins = String(now.getMinutes()).padStart(2, '0')
+  const timeStr = `${hours}:${mins}`
+  const period = hours < 12 ? 'morning' : hours < 17 ? 'afternoon' : hours < 21 ? 'evening' : 'night'
+  return { today, yesterday, timeStr, period }
 }
 
 function buildSystemPrompt() {
-  const { today, yesterday } = getDateContext()
-  return `TODAY'S DATE: ${today}. Yesterday was ${yesterday}. NEVER guess or invent dates. When Carlos shares sleep or health screenshots (Oura, RENPHO, etc.), the data is from LAST NIGHT (${yesterday}) unless he explicitly states otherwise. Never use a future date. If you are unsure of a date, ask — do not assume.
+  const { today, yesterday, timeStr, period } = getDateContext()
+  return `RIGHT NOW: ${today} ${timeStr} (${period}). Yesterday was ${yesterday}. Carlos is in Saint Petersburg (UTC+3). NEVER guess or invent dates. When Carlos shares sleep or health screenshots (Oura, RENPHO, etc.), the data is from LAST NIGHT (${yesterday}) unless he explicitly states otherwise. Never use a future date. If you are unsure of a date, ask — do not assume.
 
 You are Carlos's personal AI health coach inside iHeal. Think and respond exactly as you would in a normal Claude conversation — use your full reasoning, knowledge, and analytical capabilities without restriction. Carlos is Spanish, 45 years old, entrepreneur, based in Saint Petersburg, Russia.
 

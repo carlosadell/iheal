@@ -57,7 +57,15 @@ function BarChart({data, maxVal, colorFn, labelFn, subLabelKey, highlightLast}) 
   )
 }
 
-const ALERT_SYSTEM = `You are summarising the current health situation for a home screen widget. The user is Carlos but always refer to him as "You" or "Your".
+function buildAlertSystem() {
+  const now = new Date()
+  const today = now.toISOString().slice(0, 10)
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
+  const hours = now.getHours()
+  const period = hours < 12 ? 'morning' : hours < 17 ? 'afternoon' : hours < 21 ? 'evening' : 'night'
+  return `You are summarising the current health situation for a home screen widget. The user is Carlos but always refer to him as "You" or "Your".
+
+RIGHT NOW: ${today} (${period}). Yesterday was ${yesterday}. Sleep data shared by Carlos is from last night (${yesterday}) unless stated otherwise. NEVER use future dates.
 
 Respond with exactly this format and nothing else:
 
@@ -65,6 +73,7 @@ SUMMARY: [2 sentences max. The most clinically relevant thing happening right no
 NEXT: [2-3 short action items or warnings separated by " · " — what to do, watch for, or avoid today based on the conversation.]
 
 No bullet points. No markdown. No greetings. No extra text. Be specific and use actual context from the conversation.`
+}
 
 export default function Home({sleepLogs, protocolItems, setPage, profile, time, todayStr, dayNum}) {
   const last = sleepLogs[sleepLogs.length-1] || {}
@@ -113,7 +122,7 @@ export default function Home({sleepLogs, protocolItems, setPage, profile, time, 
             model: 'claude-sonnet-4-20250514',
             max_tokens: 180,
             stream: false,
-            system: ALERT_SYSTEM,
+            system: buildAlertSystem(),
             messages: [...recent, { role: 'user', content: 'Summarise my current situation for the home screen.' }],
           }),
         })
