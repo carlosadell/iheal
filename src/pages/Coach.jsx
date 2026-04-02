@@ -9,11 +9,15 @@ const TEXT2  = '#b0b4c0'
 const INITIAL_MSG = { role: 'ai', text: "I'm your iHeal AI Coach. I have your full health context loaded. Share Oura screenshots, RENPHO scans, lab results, or ask anything." }
 
 function getDateContext() {
+  // Use Europe/Moscow (UTC+3) so dates match Carlos's local time in Saint Petersburg
   const now = new Date()
-  const today = now.toISOString().slice(0, 10)
-  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
-  const hours = now.getHours()
-  const mins = String(now.getMinutes()).padStart(2, '0')
+  const fmt = (opts) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Moscow', ...opts })
+  const today = fmt({ year: 'numeric', month: '2-digit', day: '2-digit' }).format(now) // YYYY-MM-DD
+  const yd = new Date(now.getTime() - 86400000)
+  const yesterday = fmt({ year: 'numeric', month: '2-digit', day: '2-digit' }).format(yd)
+  const parts = fmt({ hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(now)
+  const hours = parseInt(parts.find(p => p.type === 'hour').value)
+  const mins = parts.find(p => p.type === 'minute').value
   const timeStr = `${hours}:${mins}`
   const period = hours < 12 ? 'morning' : hours < 17 ? 'afternoon' : hours < 21 ? 'evening' : 'night'
   return { today, yesterday, timeStr, period }
@@ -21,7 +25,15 @@ function getDateContext() {
 
 function buildSystemPrompt() {
   const { today, yesterday, timeStr, period } = getDateContext()
-  return `RIGHT NOW: ${today} ${timeStr} (${period}). Yesterday was ${yesterday}. Carlos is in Saint Petersburg (UTC+3). NEVER guess or invent dates. When Carlos shares sleep or health screenshots (Oura, RENPHO, etc.), the data is from LAST NIGHT (${yesterday}) unless he explicitly states otherwise. Never use a future date. If you are unsure of a date, ask — do not assume.
+  return `RIGHT NOW: It is ${today} at ${timeStr} (${period}) in Saint Petersburg (UTC+3).
+DATE RULES — READ CAREFULLY:
+- Today's date: ${today}
+- Yesterday's date: ${yesterday}
+- "Last night" means the night of ${yesterday} — i.e. Carlos went to bed on the evening of ${yesterday} and woke up on the morning of ${today}.
+- When Carlos shares Oura sleep data or overnight health screenshots, the data describes LAST NIGHT (the night of ${yesterday}) unless he explicitly says otherwise.
+- The LIVE SLEEP DATA at the bottom of this prompt uses the date the sleep STARTED (the evening date). So a record dated ${yesterday} = last night's sleep.
+- NEVER guess or invent dates. NEVER use a future date. If you are unsure which night the data is from, ASK — do not assume.
+- When referring to a night's sleep, always say "the night of [date]" (e.g. "the night of ${yesterday}") to avoid any confusion.
 
 You are Carlos's personal AI health coach inside iHeal. Think and respond exactly as you would in a normal Claude conversation — use your full reasoning, knowledge, and analytical capabilities without restriction. Carlos is Spanish, 45 years old, entrepreneur, based in Saint Petersburg, Russia.
 
@@ -91,7 +103,7 @@ function buildExtractionPrompt() {
   const { today, yesterday } = getDateContext()
   return `You are a health data extractor. Your job is to extract structured health data from a conversation.
 
-TODAY'S DATE: ${today}. Yesterday was ${yesterday}. When the user shares sleep screenshots or overnight health data, the date is ${yesterday} (last night) unless they explicitly state a different date. NEVER use a future date. NEVER guess dates — use ${today} for same-day data and ${yesterday} for overnight/sleep data.
+TODAY'S DATE: ${today}. Yesterday's date: ${yesterday}. "Last night" = the night of ${yesterday} (Carlos went to bed evening of ${yesterday}, woke up morning of ${today}). When the user shares sleep screenshots or overnight health data, the date to use is ${yesterday} (the night it started) unless they explicitly state a different date. NEVER use a future date. NEVER guess dates — use ${today} for same-day data and ${yesterday} for overnight/sleep data.
 
 CRITICAL: Respond with ONLY a raw JSON object. No markdown. No code fences. No explanation. No preamble. The very first character of your response must be { and the very last must be }.
 
@@ -438,7 +450,7 @@ export default function Coach({ refreshSleep, refreshBody, refreshBp, refreshLab
           if (saved.includes('lab results') && refreshLabs) refreshLabs()
           if (saved.includes('protocol') && refreshProtocolItems) refreshProtocolItems()
           // Invalidate Home alert cache so it regenerates with new data
-          const today = new Date().toISOString().slice(0, 10)
+          const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Moscow', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
           localStorage.removeItem(`iheal_alert_${today}`)
         }
       })
@@ -487,7 +499,7 @@ export default function Coach({ refreshSleep, refreshBody, refreshBp, refreshLab
   }
 
   const saveAsReport = async (text, idx) => {
-    const date = new Date().toISOString().slice(0, 10)
+    const date = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Moscow', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
     await insertReport({
       date,
       recipient: 'AI Coach',

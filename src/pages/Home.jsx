@@ -59,9 +59,10 @@ function BarChart({data, maxVal, colorFn, labelFn, subLabelKey, highlightLast}) 
 
 function buildAlertSystem() {
   const now = new Date()
-  const today = now.toISOString().slice(0, 10)
-  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
-  const hours = now.getHours()
+  const fmt = (opts) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Moscow', ...opts })
+  const today = fmt({ year: 'numeric', month: '2-digit', day: '2-digit' }).format(now)
+  const yesterday = fmt({ year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(now.getTime() - 86400000))
+  const hours = parseInt(fmt({ hour: '2-digit', hour12: false }).format(now))
   const period = hours < 12 ? 'morning' : hours < 17 ? 'afternoon' : hours < 21 ? 'evening' : 'night'
   return `You are summarising the current health situation for a home screen widget. The user is Carlos but always refer to him as "You" or "Your".
 
@@ -94,7 +95,7 @@ export default function Home({sleepLogs, protocolItems, setPage, profile, time, 
     if (generated.current) return
     generated.current = true
 
-    const today = new Date().toISOString().slice(0, 10)
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Moscow', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
     const cacheKey = `iheal_alert_${today}`
     const cached = localStorage.getItem(cacheKey)
 
